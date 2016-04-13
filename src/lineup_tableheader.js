@@ -86,7 +86,13 @@ var LineUp;
     LineUp.updateClipPaths(allHeaderData, this.$headerSVG, 'H', false, 'columnheader');
     //console.log(allHeaderData);
 
-
+    function isSortedColumn(sc, d) {
+      if (sc === d) {
+        return true;
+      }
+      return sc && d && sc.column && d.column && sc.column.column === d.column.column;    
+    }
+    
     // -- Handle the header groups (exit,enter, update)
 
     var allHeaders = svg.selectAll('.header').data(allHeaderData, function (d) {
@@ -138,7 +144,7 @@ var LineUp;
         var bundle = config.columnBundles[d.columnBundle];
         // TODO: adapt to comparison mode !!
         //same sorting swap order
-        if (bundle.sortedColumn !== null && (d === bundle.sortedColumn)) {
+        if (bundle.sortedColumn !== null && isSortedColumn(bundle.sortedColumn, d)) {
           bundle.sortingOrderAsc = !bundle.sortingOrderAsc;
         } else {
           bundle.sortingOrderAsc = d instanceof LineUp.LayoutStringColumn || d instanceof LineUp.LayoutCategoricalColumn || d instanceof LineUp.LayoutRankColumn;
@@ -232,11 +238,11 @@ var LineUp;
     
     //Get and set the clip source to be used for rendering overlays. Scoping context to a related DOM element.
     var clipSource = that.getClipSource.apply(this.$container[0][0]);
-
+    
     allHeaders.select('.headerLabel')
       .classed('sortedColumn', function (d) {
         var sc = config.columnBundles[d.columnBundle].sortedColumn;
-        return sc === d;
+        return isSortedColumn(sc, d);
       })
       .attr({
         y: function (d) {
@@ -267,7 +273,7 @@ var LineUp;
 
     allHeaders.select('.headerSort').text(function (d) {
       var sc = config.columnBundles[d.columnBundle].sortedColumn;
-      return ((sc === d) ?
+      return ((isSortedColumn(sc, d)) ?
         ((config.columnBundles[d.columnBundle].sortingOrderAsc) ? '\uf0de' : '\uf0dd')
         : '');
     })

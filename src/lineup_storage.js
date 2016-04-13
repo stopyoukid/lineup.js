@@ -416,17 +416,28 @@ var LineUp;
       /**
        * returns a column by name
        * @param name
+       * @param all if true returns all matching columns
        * @returns {*}
        */
-      getColumnByName: function (name) {
-        var cols = this.getColumnLayout();
+      getColumnByName: function (name, all) {
+        var cols = this.getColumnLayout().slice(0);
+        var result = [];
         for (var i = cols.length - 1; i >= 0; --i) {
           var col = cols[i];
           if (col.getLabel() === name || (col.column && col.column.column === name)) {
-            return col;
+            if (!all) {
+              return col;
+            }
+            result.push(col);
+          }
+          else if (col.children) {
+            for (var j = 0; j < col.children.length; j++) {
+               cols.unshift(col.children[j]);
+               i++;
+            }
           }
         }
-        return null;
+        return !all ? null : result;
       }
     });
 }(LineUp || (LineUp = {}), d3, jQuery, _));

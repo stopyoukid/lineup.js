@@ -138,13 +138,23 @@ var LineUp;
             }).select('title').text(function(d) { return d.label; });
     }
 
-  function showStacked(config) {
+  function showStacked(config, lineup) {
     //if not enabled or values are shown
     if (!config.renderingOptions.stacked || config.renderingOptions.values) {
       return false;
     }
     //primary is a stacked one
     var current = config.columnBundles.primary.sortedColumn;
+    if (current) {
+        if (current && current.column && current.column.column) {
+            var matchingCols = lineup.storage.getColumnByName(current.column.column, true);
+            for (var i = 0; i < matchingCols.length; i++) {
+                if (matchingCols[i].parent instanceof LineUp.LayoutStackedColumn) {
+                    return false;
+                }
+            }
+        }
+    }
     return !(current && (current.parent instanceof LineUp.LayoutStackedColumn));
   }
 
@@ -190,7 +200,7 @@ var LineUp;
       });
   }
 
-  function updateStackBars(headers, allRows, _stackTransition, config) {
+  function updateStackBars(headers, allRows, _stackTransition, config, lineup) {
     // -- RENDER the stacked columns (update, exit, enter)
     var allStackedHeaders = headers.filter(function (d) {
       return (d instanceof LineUp.LayoutStackedColumn);
@@ -219,7 +229,7 @@ var LineUp;
     var allStackW = 0;
     var allStackRes = {};
 
-    var asStacked = showStacked(config);
+    var asStacked = showStacked(config, lineup);
 
     var allStack = stackRows.selectAll('rect').data(function (d) {
 
@@ -431,7 +441,7 @@ var LineUp;
         return  'translate(' + 0 + ',' + (value === null || typeof value === 'undefined' ? 0 : rowScale(value)) + ')';
       }
     });
-    var asStacked = showStacked(this.config);
+    var asStacked = showStacked(this.config, this);
 
     function createOverlays(row) {
       var textOverlays = [];
@@ -628,7 +638,7 @@ var LineUp;
     var allRows = allRowsSuper;
 
     updateSingleBars(headers, allRows, that.config);
-    updateStackBars(headers, allRows, this.config.renderingOptions.animation && stackTransition, that.config);
+    updateStackBars(headers, allRows, this.config.renderingOptions.animation && stackTransition, that.config, that);
     updateActionBars(headers, allRows, that.config);
 
     LineUp.updateClipPaths(allHeaders, this.$bodySVG, 'B', true);
