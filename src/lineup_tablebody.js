@@ -497,6 +497,8 @@ var LineUp;
         }).text(function (d) {
           return d.label;
         });
+        
+      overlays.remove();
 
       // update x on update
       overlays
