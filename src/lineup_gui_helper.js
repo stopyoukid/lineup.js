@@ -1,7 +1,7 @@
 /**
  * Created by Hendrik Strobelt (hendrik.strobelt.com) on 8/17/14.
  */
-/* global d3, jQuery, window, document */
+/* global d3, jQuery, window */
 var LineUp;
 (function (LineUp, d3, $, undefined) {
   LineUp.prototype = LineUp.prototype || {};
@@ -432,9 +432,13 @@ var LineUp;
           '<button class="cancel"><i class="fa fa-times"></i> cancel</button>' +
           '<button class="ok"><i class="fa fa-check"></i> ok</button>'
       );
+      
+      function getElementById(id) {
+        return $(that.$container.node()).find("#" + id)[0];
+      }
 
       popup.select('.ok').on('click', function() {
-        var newValue = document.getElementById('popupInputText').value;
+        var newValue = getElementById('popupInputText').value;
         if (newValue.length > 0) {
           col.label = newValue;
           that.updateHeader(that.storage.getColumnLayout(col.columnBundle));
