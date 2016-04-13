@@ -34,7 +34,7 @@ var LineUp;
         }
       });
   };
-  function updateText(allHeaders, allRows, svg, config) {
+  function updateText(allHeaders, allRows, svg, config, clipSource) {
     // -- the text columns
 
     var allTextHeaders = allHeaders.filter(function (d) {
@@ -52,7 +52,7 @@ var LineUp;
             offsetX: column.offsetX,
             columnW: column.getColumnWidth(),
             isRank: (column instanceof LineUp.LayoutRankColumn),
-            clip: 'url(#clip-B' + column.id + ')'
+            clip: 'url(' + clipSource + '#clip-B' + column.id + ')'
           };
         });
         return dd;
@@ -73,6 +73,11 @@ var LineUp;
     textRows
       .attr('x', function (d) {
         return d.offsetX;
+      })
+      .attr({
+        'clip-path': function (d) {
+          return d.clip;
+        }
       })
       .text(function (d) {
         return d.label;
@@ -302,7 +307,7 @@ var LineUp;
   function createRepr(col, row) {
     var r =col.getValue(row, 'raw');
     if (col instanceof LineUp.LayoutNumberColumn || col instanceof LineUp.LayoutStackedColumn) {
-      r = isNaN(r) || r.toString() === '' ? '' : +r;
+      r = (r === null || typeof r === 'undefined' ? 0 : isNaN(r) || r.toString() === '' ? '' : +r);
     }
     return r;
   }
@@ -332,7 +337,7 @@ var LineUp;
     if (Array.isArray(row)) {
       this.storage.setSelection(row);
       row = row.map(function(d) { return d[primaryKey]; });
-      $rows.classed('selected', function(d) { return row.indexOf(d[primaryKey]) > 0; });
+      $rows.classed('selected', function(d) { return row.indexOf(d[primaryKey]) >= 0; });
     } else if (row) {
       this.storage.setSelection([row]);
       $rows.classed('selected',function(d) { return d[primaryKey] === row[primaryKey]; });
@@ -371,7 +376,9 @@ var LineUp;
     var datLength = data.length, rawData = data;
     var rowScale = d3.scale.ordinal()
         .domain(data.map(function (d) {
-          return d[primaryKey];
+          var value = d[primaryKey];
+          
+          return (value === null || typeof value === 'undefined') ? '' : value;
         }))
         .rangeBands([0, (datLength * that.config.svgLayout.rowHeight)], 0, that.config.svgLayout.rowPadding),
       prevRowScale = bundle.prevRowScale || rowScale;
@@ -401,7 +408,12 @@ var LineUp;
       transform: function (d) { //init with its previous position
         var prev = prevRowScale(d[primaryKey]);
         if (typeof prev === 'undefined') { //if not defined from the bottom
-          prev = rowScale.range()[1];
+          var range = rowScale.range();
+          if (range && range.length > 0) {
+            prev = range[range.length - 1];
+          } else {
+            prev = 0;
+          }
         }
         return 'translate(' + 0 + ',' + prev + ')';
       }
@@ -415,7 +427,8 @@ var LineUp;
     //    //--- update ---
     (this.config.renderingOptions.animation ? allRowsSuper.transition().duration(this.config.svgLayout.animationDuration) : allRowsSuper).attr({
       'transform': function (d) {
-        return  'translate(' + 0 + ',' + rowScale(d[primaryKey]) + ')';
+        var value = d[primaryKey];
+        return  'translate(' + 0 + ',' + (value === null || typeof value === 'undefined' ? 0 : rowScale(value)) + ')';
       }
     });
     var asStacked = showStacked(this.config);
@@ -459,7 +472,7 @@ var LineUp;
       return textOverlays;
     }
 
-    function renderOverlays($row, textOverlays, clazz, clipPrefix) {
+    function renderOverlays($row, textOverlays, clazz, clipPrefix, clipSource) {
       $row.selectAll('text.' + clazz).data(textOverlays).enter().append('text').
         attr({
           'class': 'tableData ' + clazz,
@@ -468,7 +481,7 @@ var LineUp;
           },
           y: that.config.svgLayout.rowHeight / 2,
           'clip-path': function (d) {
-            return 'url(#clip-' + clipPrefix + d.id + ')';
+            return 'url(' + (clipSource || '') + '#clip-' + clipPrefix + d.id + ')';
           }
         }).text(function (d) {
           return d.label;
@@ -506,7 +519,7 @@ var LineUp;
               return Math.max(d.w - 2, 0);
             }
           });
-        renderOverlays($row, textOverlays, 'hoveronly', 'M');
+        renderOverlays($row, textOverlays, 'hoveronly', 'M',  that.getClipSource.apply(this));
 
         function absoluteRowPos(elem) {
           var scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
@@ -520,7 +533,7 @@ var LineUp;
         }
         if (that.config.interaction.tooltips) {
           that.tooltip.show(generateTooltip(row, allHeaders, that.config), {
-            x: d3.event.x + 10,
+            x: d3.mouse(that.$container.node())[0] + 10,
             y: absoluteRowPos(this),
             height: that.config.svgLayout.rowHeight
           });
@@ -531,7 +544,7 @@ var LineUp;
       mousemove: function () {
         if (that.config.interaction.tooltips) {
           that.tooltip.move({
-            x: d3.event.x
+            x: d3.mouse(that.$container.node())[0]
           });
         }
       },
@@ -556,6 +569,7 @@ var LineUp;
               //remove the last one
               that.listeners['selected'](null);
             }
+            allselected.splice(allselected.indexOf(row), 1);
           } else {
             $row.classed('selected', true);
             that.storage.select(row);
@@ -605,13 +619,15 @@ var LineUp;
     updateActionBars(headers, allRows, that.config);
 
     LineUp.updateClipPaths(allHeaders, this.$bodySVG, 'B', true);
-    updateText(allHeaders, allRows, svg, that.config);
+    //Get and set the clip source to be used for rendering overlays. Scoping context to a related DOM element.
+    var clipSource = that.getClipSource.apply(this.$container[0][0]);
+    updateText(allHeaders, allRows, svg, that.config, clipSource);
     updateCategorical(allHeaders, allRows, svg, that.config);
     if (that.config.renderingOptions.values) {
       allRowsSuper.classed('values', true);
       allRowsSuper.each(function (row) {
         var $row = d3.select(this);
-        renderOverlays($row, createOverlays(row), 'valueonly', 'B');
+        renderOverlays($row, createOverlays(row), 'valueonly', 'B', clipSource);
       });
     } else {
       allRowsSuper.classed('values', false).selectAll('text.valueonly').remove();

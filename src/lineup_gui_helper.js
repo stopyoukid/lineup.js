@@ -12,24 +12,27 @@ var LineUp;
    * @param options optional options like the dimension of the popup
    * @returns {{popup: *, table: *, remove: remove, onOK: onOK}}
    */
-  function createPopup(title, label, options) {
+  function createPopup(container, title, label, options) {
+    var popupWidth = 400;
     options = $.extend({}, options, {
-      x: +(window.innerWidth) / 2 - 100,
-      y: 100,
-      width: 400,
-      height: 200
+      x: +(container.node().clientWidth) / 2 - (popupWidth / 2),
+      //   y: 100,
+      y: 0,
+      width: popupWidth/*,
+      height: 200*/
     });
-    var popupBG = d3.select("body")
-      .append("div").attr("class", "lu-popupBG");
-
-    var popup = d3.select("body").append("div")
+    var popupBG = container.append('div')
+        // var popupBG = d3.select("body").append("div")
+      .attr("class", "lu-popupBG");
+      
+    var popup = container.append('div')
       .attr({
         "class": "lu-popup"
       }).style({
         left: options.x + "px",
         top: options.y + "px",
-        width: options.width + "px",
-        height: options.height + "px"
+        width: options.width + "px"/*,
+        height: options.height + "px"*/
       })
       .html(
         '<span style="font-weight: bold">' + title + '</span>' +
@@ -39,10 +42,10 @@ var LineUp;
         '<button class="ok"><i class="fa fa-check"></i> ok</button>'
     );
 
-    var theTable = popup.select(".selectionTable").style({
+    var theTable = popup.select(".selectionTable")/*.style({
       width: (options.width - 10) + "px",
       height: (options.height - 40) + "px"
-    }).append("table");
+    })*/.append("table");
 
     popup.select(".cancel").on("click", function () {
       popupBG.remove();
@@ -65,7 +68,7 @@ var LineUp;
   LineUp.prototype.addNewStackedColumnDialog = function () {
     var that = this;
 
-    var popup = createPopup('add stacked column:', 'Stacked');
+    var popup = createPopup(this.$container, 'Add stacked column:', 'Stacked');
     // list all data rows !
     var trData = that.storage.getRawColumns().filter(function (d) {
       return (d instanceof LineUp.LineUpNumberColumn);
@@ -110,10 +113,13 @@ var LineUp;
     }
 
     redraw();
-
+    
+    function getElementById(id) {
+      return $(that.$container.node()).find("#" + id)[0];
+    }
 
     popup.onOK(function () {
-      var name = document.getElementById("popupInputText").value;
+      var name = getElementById("popupInputText").value;
       if (name.length < 1) {
         window.alert("name must not be empty");
         return;
@@ -136,6 +142,7 @@ var LineUp;
       that.storage.addStackedColumn(desc);
       popup.remove();
       that.headerUpdateRequired = true;
+      that.listeners['columns-changed'](that);
       that.updateAll();
     });
 
@@ -143,7 +150,7 @@ var LineUp;
 
   LineUp.prototype.addNewSingleColumnDialog = function () {
     var that = this;
-    var popup = createPopup('add single columns', undefined);
+    var popup = createPopup(this.$container, 'add single columns', undefined);
     // list all data rows !
     var trData = that.storage.getRawColumns()
 //        .filter(function(d){return (d instanceof LineUpNumberColumn);})
@@ -193,6 +200,11 @@ var LineUp;
       });
 
       popup.remove();
+      
+      if (allChecked.length) {
+        that.listeners['columns-changed'](that);
+      }
+
       that.headerUpdateRequired = true;
       that.updateAll();
     });
@@ -253,7 +265,7 @@ var LineUp;
 
   LineUp.prototype.reweightStackedColumnDialog = function (col) {
     var that = this;
-    var popup = createPopup('re-weight column "' + col.label + '"', undefined);
+    var popup = createPopup(this.$container, 're-weight column "' + col.label + '"', undefined);
 
     //console.log(col.childrenWeights);
     // list all data rows !
@@ -283,15 +295,21 @@ var LineUp;
     var that = this;
     var act = bak;
 
+    var containerHeight = this.$container.node().clientHeight;
+    var height = Math.max(270, Math.min(containerHeight / 2, 470));
+    var popupBG = this.$container.append('div')
+        // var popupBG = d3.select("body").append("div")
+        .attr("class", "lu-popupBG");
 
-    var popup = d3.select("body").append("div")
+    var popup = this.$container.append('div')
       .attr({
         "class": "lu-popup"
       }).style({
-        left: +(window.innerWidth) / 2 - 100 + "px",
-        top: 100 + "px",
-        width: "420px",
-        height: "470px"
+        left: +(this.$container.node().clientWidth) / 2 - 100 + "px",
+        //   top: 100 + "px",
+        top: "0px",
+        width: (height - 50) + "px",
+        height: height + "px"
       })
       .html(
         '<div style="font-weight: bold"> change mapping: </div>' +
@@ -321,13 +339,17 @@ var LineUp;
       //console.log(act.domain().toString(), act.range().toString());
       $button.classed('filtered', !isSame(act.range(), original.range()) || !isSame(act.domain(), original.domain()));
       that.listeners['change-filter'](that, selectedColumn);
-      that.storage.resortData({filteredChanged: true});
+      if (!that.config.filtering || !that.config.filtering.external) {
+        that.storage.resortData({filteredChanged: true});
+      }
       that.updateAll(true);
     }
 
     var editorOptions = {
       callback: applyMapping,
-      triggerCallback : 'dragend'
+      triggerCallback : 'dragend',
+      width: height - 50,
+      height: height - 50
     };
     var editor = LineUp.mappingEditor(bak, original.domain(), that.storage.rawdata, access, editorOptions);
     popup.select('.mappingArea').call(editor);
@@ -339,11 +361,13 @@ var LineUp;
     popup.select(".ok").on("click", function () {
       applyMapping(act);
       popup.remove();
+      popupBG.remove();
     });
     popup.select('.cancel').on('click', function () {
       selectedColumn.mapping(bak);
       $button.classed('filtered', !isSame(bak.range(), original.range()) || !isSame(bak.domain(), original.domain()));
       popup.remove();
+      popupBG.remove();
     });
     popup.select('.reset').on('click', function () {
       act = bak = original;
@@ -375,15 +399,24 @@ var LineUp;
 
     function removeStackedColumn(col) {
       that.storage.removeColumn(col);
+      
+      that.listeners['columns-changed'](that);
+      
       that.headerUpdateRequired = true;
       that.updateAll();
     }
 
     function renameStackedColumn(col) {
-      var x = +(window.innerWidth) / 2 - 100;
-      var y = +100;
+      var x = +(this.$container.node().clientWidth) / 2 - 100;
+      //   var y = +100;
+      var y = 0;
 
-      var popup = d3.select('body').append('div')
+      var popupBG = this.$container.append('div')
+        // var popupBG = d3.select("body").append("div")
+        .attr("class", "lu-popupBG");
+        
+        // ATS: Was d3.select('body').appe...
+      var popup = this.$container.append('div')
         .attr({
           'class': 'lu-popup'
         }).style({
@@ -406,6 +439,7 @@ var LineUp;
           col.label = newValue;
           that.updateHeader(that.storage.getColumnLayout(col.columnBundle));
           popup.remove();
+          popupBG.remove();
         } else {
           window.alert('non empty string required');
         }
@@ -413,6 +447,7 @@ var LineUp;
 
       popup.select('.cancel').on('click', function () {
         popup.remove();
+        popupBG.remove();
       });
     }
 
@@ -476,12 +511,16 @@ var LineUp;
       return;
     }
     var bak = column.filter || [];
-    var popup = d3.select('body').append('div')
+    var popupBG = this.$container.append('div')
+          // var popupBG = d3.select("body").append("div")
+      .attr("class", "lu-popupBG");
+
+    var popup = this.$container.append('div')
       .attr({
         'class': 'lu-popup'
       }).style({
-        left: +(window.innerWidth) / 2 - 100 + 'px',
-        top: 100 + 'px',
+        left: +(this.$container.node().clientWidth) / 2 - 100,
+        top: "0px",
         width: (400) + 'px',
         height: (300) + 'px'
       })
@@ -533,13 +572,16 @@ var LineUp;
       column.filter = filter;
       $button.classed('filtered', (filter && filter.length > 0 && filter.length < column.column.categories.length));
       that.listeners['change-filter'](that, column);
-      that.storage.resortData({filteredChanged: true});
+      if (!that.config.filtering || !that.config.filtering.external) {
+        that.storage.resortData({filteredChanged: true});
+      }
       that.updateBody();
     }
 
     popup.select('.cancel').on('click', function () {
       updateData(bak);
       popup.remove();
+      popupBG.remove();
     });
     popup.select('.reset').on('click', function () {
       trData.forEach(function (d) {
@@ -559,6 +601,7 @@ var LineUp;
       }
       updateData(f);
       popup.remove();
+      popupBG.remove();
     });
   };
 
@@ -567,12 +610,21 @@ var LineUp;
       //can't filter other than string columns
       return;
     }
-    var pos = $(this.$header.node()).offset();
-    pos.left += column.offsetX;
-    pos.top += column.offsetY;
+    // var pos = $(this.$header.node()).offset();
+    // pos.left += column.offsetX;
+    // // pos.top += column.offsetY;
+    var pos = {
+      left: column.offsetX,
+      top: 0
+    //   top: column.offsetY
+    };
     var bak = column.filter || '';
 
-    var popup = d3.select('body').append('div')
+    var popupBG = this.$container.append('div')
+      // var popupBG = d3.select("body").append("div")
+      .attr("class", "lu-popupBG");
+
+    var popup = this.$container.append('div')
       .attr({
         'class': 'lu-popup2'
       }).style({
@@ -592,22 +644,30 @@ var LineUp;
       column.filter = filter;
       $button.classed('filtered', (filter && filter.length > 0));
       that.listeners['change-filter'](that, column);
-      that.storage.resortData({filteredChanged: true});
+      if (!that.config.filtering || !that.config.filtering.external) {
+        that.storage.resortData({filteredChanged: true});
+      }
       that.updateBody();
+    }
+    
+    function getElementById(id) {
+      return $(that.$container.node()).find("#" + id)[0];
     }
 
     popup.select('.cancel').on('click', function () {
-      document.getElementById('popupInputText').value = bak;
+      getElementById('popupInputText').value = bak;
       updateData(bak);
       popup.remove();
+      popupBG.remove();
     });
     popup.select('.reset').on('click', function () {
-      document.getElementById('popupInputText').value = '';
+      getElementById('popupInputText').value = '';
       updateData(null);
     });
     popup.select('.ok').on('click', function () {
-      updateData(document.getElementById('popupInputText').value);
+      updateData(getElementById('popupInputText').value);
       popup.remove();
+      popupBG.remove();
     });
   };
 
@@ -675,7 +735,7 @@ var LineUp;
       var left = container.scrollLeft;
       //at least one row changed
       that.scrolled(act, left);
-      if (Math.abs(prevScrollTop - act) >= rowHeight * backupRows) {
+      if (Math.abs(prevScrollTop - act) >= rowHeight * (backupRows / 2)) {
         prevScrollTop = act;
         that.updateBody();
       }
@@ -746,7 +806,9 @@ var LineUp;
 
       if (that.config.columnBundles.primary.sortedColumn instanceof LineUp.LayoutStackedColumn) {
         that.listeners['change-sortcriteria'](that, that.config.columnBundles.primary.sortedColumn);
-        that.storage.resortData({column: that.config.columnBundles.primary.sortedColumn});
+        if (!that.config.sorting || !that.config.sorting.external) {
+          that.storage.resortData({column: that.config.columnBundles.primary.sortedColumn});
+        }
         that.updateBody(that.storage.getColumnLayout(), that.storage.getData(), false);
       }
 //        that.updateBody(that.storage.getColumnLayout(), that.storage.getData())

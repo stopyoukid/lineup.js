@@ -271,7 +271,7 @@ var LineUp;
     var that = this;
     this.histgenerator.range(this.scale.range());
     this.histgenerator.value(function (row) { return that.getValue(row) ;});
-    this.hist = [];
+    this._hist = [];
   }
   LineUp.LayoutNumberColumn = LayoutNumberColumn;
 
@@ -286,33 +286,56 @@ var LineUp;
     originalMapping: function() {
       return  d3.scale.linear().clamp(true).domain(this.column.domain).range(this.column.range);
     },
-    prepare: function(data, showHistograms) {
-      if (!showHistograms) {
-        this.hist = [];
+    getHist: function(callback) {
+      var that = this;
+      if (this.histogramGetter) {
+        this.histogramGetter(this, function(hist) {
+          callback.call(that, hist);
+        });
+      } else {
+        setTimeout(function() {
+          callback.call(that, that._hist);
+        }, 0);
+      }
+    },
+    prepare: function(data, showHistograms, histogramGetter) {
+      this.histogramGetter = histogramGetter;
+      if (!showHistograms || histogramGetter) {
+        this._hist = [];
         return;
       }
       //remove all the direct values to save space
-      this.hist = this.histgenerator(data).map(function (bin) {
+      this._hist = this.histgenerator(data).map(function (bin) {
         return {
           x : bin.x,
           dx : bin.dx,
           y: bin.y
         };
       });
-      var max = d3.max(this.hist, function(d) { return d.y; });
-      this.hist.forEach(function (d) {
-        d.y /= max;
+      var max = d3.max(this._hist, function(d) { return d.y; });
+      this._hist.forEach(function (d) {
+        if (max > 0) {
+          d.y /= max;
+        } else {
+          d.y = 0;
+        }
       });
     },
-    binOf : function (row) {
-      var v = this.getValue(row), i;
-      for(i = this.hist.length -1 ; i>= 0; --i) {
-        var bin = this.hist[i];
-        if (bin.x <= v && v <= (bin.x+bin.dx)) {
-          return i;
+    binOf : function (row, callback) {
+      var that = this;
+      this.getHist(function (hist) {
+        var v = that.getValue(row), i;
+        if (hist) {
+          for(i = hist.length -1 ; i>= 0; --i) {
+            var bin = hist[i];
+            if (bin.x <= v && v <= (bin.x+bin.dx)) {
+              callback.call(that, i);
+              return;
+            }
+          }
         }
-      }
-      return -1;
+        callback.call(that, -1);
+      });
     },
     setColumnWidth: function (newWidth, ignoreParent) {
       this.value2pixel.range([0, newWidth]);

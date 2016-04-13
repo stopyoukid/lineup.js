@@ -1,6 +1,6 @@
-/*! LineUpJS - v0.1.0 - 2015-07-08
+/*! LineUpJS - v0.1.0 - 2016-04-13
 * https://github.com/Caleydo/lineup.js
-* Copyright (c) 2015 ; Licensed BSD */
+* Copyright (c) 2016 ; Licensed BSD */
 (function() {
   function LineUpLoader(jQuery, d3, _) {
 
@@ -20,8 +20,12 @@ var LineUp;
 //    this.sortedColumn = [];
     this.$container = $container;
     this.tooltip = LineUp.createTooltip($container.node());
+    
+    // Hide default tooltip to avoid undesired artifacts.
+    this.tooltip.hide();
+    
     //trigger hover event
-    this.listeners = d3.dispatch('hover','change-sortcriteria','change-filter', 'selected','multiselected');
+    this.listeners = d3.dispatch('hover','change-sortcriteria','change-filter', 'columns-changed', 'selected','multiselected', 'generate-histogram');
 
     this.config = $.extend(true, {}, LineUp.defaultConfig, config, {
       //TODO internal stuff, should to be extracted
@@ -148,7 +152,7 @@ var LineUp;
       addPlusSigns:false,
       plusSigns: {
         addStackedColumn: {
-         title: 'add stacked column',
+         title: 'Add stacked column',
          action: 'addNewEmptyStackedColumn',
          x: 0, y: 2,
          w: 21, h: 21 // LineUpGlobal.htmlLayout.headerHeight/2-4
@@ -195,6 +199,19 @@ var LineUp;
     this.headerUpdateRequired = true;
     delete this.prevRowScale;
     this.startVis();
+  };
+  
+       /**
+     * change a rendering option
+    * @param option
+    * @param value
+    */
+  LineUp.prototype.changeInteractionOption = function (option, value) {
+    var v = this.config.interaction[option];
+    if (v === value) {
+      return;
+    }
+    this.config.interaction[option] = value;
   };
 
   /**
@@ -283,7 +300,9 @@ var LineUp;
     bundle.sortedColumn = d;
 
     this.listeners['change-sortcriteria'](this, d, bundle.sortingOrderAsc);
-    this.storage.resortData({column: d, asc: bundle.sortingOrderAsc});
+    if (!this.config.sorting || !this.config.sorting.external) {
+      this.storage.resortData({column: d, asc: bundle.sortingOrderAsc});
+    }
     this.updateAll(false, d.columnBundle);
   };
 
@@ -335,7 +354,10 @@ var LineUp;
     //trigger resort
     if (column === this.config.columnBundles[bundle].sortedColumn) {
       this.listeners['change-sortcriteria'](this, column, this.config.columnBundles[bundle]);
-      this.storage.resortData({ key: bundle });
+    
+      if (!this.config.sorting || !this.config.sorting.external) {
+        this.storage.resortData({ key: bundle });
+      }
     }
     this.updateAll(false, bundle);
     return true;
@@ -352,7 +374,10 @@ var LineUp;
     }
     column.filter = filter;
     this.listeners['change-filter'](this, column);
-    this.storage.resortData({filteredChanged: true});
+    
+    if (!this.config.filtering || !this.config.filtering.external) {
+      this.storage.resortData({filteredChanged: true});
+    }
     this.updateBody();
   };
 
@@ -635,7 +660,7 @@ var LineUp;
     var that = this;
     this.histgenerator.range(this.scale.range());
     this.histgenerator.value(function (row) { return that.getValue(row) ;});
-    this.hist = [];
+    this._hist = [];
   }
   LineUp.LayoutNumberColumn = LayoutNumberColumn;
 
@@ -650,33 +675,56 @@ var LineUp;
     originalMapping: function() {
       return  d3.scale.linear().clamp(true).domain(this.column.domain).range(this.column.range);
     },
-    prepare: function(data, showHistograms) {
-      if (!showHistograms) {
-        this.hist = [];
+    getHist: function(callback) {
+      var that = this;
+      if (this.histogramGetter) {
+        this.histogramGetter(this, function(hist) {
+          callback.call(that, hist);
+        });
+      } else {
+        setTimeout(function() {
+          callback.call(that, that._hist);
+        }, 0);
+      }
+    },
+    prepare: function(data, showHistograms, histogramGetter) {
+      this.histogramGetter = histogramGetter;
+      if (!showHistograms || histogramGetter) {
+        this._hist = [];
         return;
       }
       //remove all the direct values to save space
-      this.hist = this.histgenerator(data).map(function (bin) {
+      this._hist = this.histgenerator(data).map(function (bin) {
         return {
           x : bin.x,
           dx : bin.dx,
           y: bin.y
         };
       });
-      var max = d3.max(this.hist, function(d) { return d.y; });
-      this.hist.forEach(function (d) {
-        d.y /= max;
+      var max = d3.max(this._hist, function(d) { return d.y; });
+      this._hist.forEach(function (d) {
+        if (max > 0) {
+          d.y /= max;
+        } else {
+          d.y = 0;
+        }
       });
     },
-    binOf : function (row) {
-      var v = this.getValue(row), i;
-      for(i = this.hist.length -1 ; i>= 0; --i) {
-        var bin = this.hist[i];
-        if (bin.x <= v && v <= (bin.x+bin.dx)) {
-          return i;
+    binOf : function (row, callback) {
+      var that = this;
+      this.getHist(function (hist) {
+        var v = that.getValue(row), i;
+        if (hist) {
+          for(i = hist.length -1 ; i>= 0; --i) {
+            var bin = hist[i];
+            if (bin.x <= v && v <= (bin.x+bin.dx)) {
+              callback.call(that, i);
+              return;
+            }
+          }
         }
-      }
-      return -1;
+        callback.call(that, -1);
+      });
     },
     setColumnWidth: function (newWidth, ignoreParent) {
       this.value2pixel.range([0, newWidth]);
@@ -1181,24 +1229,27 @@ var LineUp;
    * @param options optional options like the dimension of the popup
    * @returns {{popup: *, table: *, remove: remove, onOK: onOK}}
    */
-  function createPopup(title, label, options) {
+  function createPopup(container, title, label, options) {
+    var popupWidth = 400;
     options = $.extend({}, options, {
-      x: +(window.innerWidth) / 2 - 100,
-      y: 100,
-      width: 400,
-      height: 200
+      x: +(container.node().clientWidth) / 2 - (popupWidth / 2),
+      //   y: 100,
+      y: 0,
+      width: popupWidth/*,
+      height: 200*/
     });
-    var popupBG = d3.select("body")
-      .append("div").attr("class", "lu-popupBG");
-
-    var popup = d3.select("body").append("div")
+    var popupBG = container.append('div')
+        // var popupBG = d3.select("body").append("div")
+      .attr("class", "lu-popupBG");
+      
+    var popup = container.append('div')
       .attr({
         "class": "lu-popup"
       }).style({
         left: options.x + "px",
         top: options.y + "px",
-        width: options.width + "px",
-        height: options.height + "px"
+        width: options.width + "px"/*,
+        height: options.height + "px"*/
       })
       .html(
         '<span style="font-weight: bold">' + title + '</span>' +
@@ -1208,10 +1259,10 @@ var LineUp;
         '<button class="ok"><i class="fa fa-check"></i> ok</button>'
     );
 
-    var theTable = popup.select(".selectionTable").style({
+    var theTable = popup.select(".selectionTable")/*.style({
       width: (options.width - 10) + "px",
       height: (options.height - 40) + "px"
-    }).append("table");
+    })*/.append("table");
 
     popup.select(".cancel").on("click", function () {
       popupBG.remove();
@@ -1234,7 +1285,7 @@ var LineUp;
   LineUp.prototype.addNewStackedColumnDialog = function () {
     var that = this;
 
-    var popup = createPopup('add stacked column:', 'Stacked');
+    var popup = createPopup(this.$container, 'Add stacked column:', 'Stacked');
     // list all data rows !
     var trData = that.storage.getRawColumns().filter(function (d) {
       return (d instanceof LineUp.LineUpNumberColumn);
@@ -1279,10 +1330,13 @@ var LineUp;
     }
 
     redraw();
-
+    
+    function getElementById(id) {
+      return $(that.$container.node()).find("#" + id)[0];
+    }
 
     popup.onOK(function () {
-      var name = document.getElementById("popupInputText").value;
+      var name = getElementById("popupInputText").value;
       if (name.length < 1) {
         window.alert("name must not be empty");
         return;
@@ -1305,6 +1359,7 @@ var LineUp;
       that.storage.addStackedColumn(desc);
       popup.remove();
       that.headerUpdateRequired = true;
+      that.listeners['columns-changed'](that);
       that.updateAll();
     });
 
@@ -1312,7 +1367,7 @@ var LineUp;
 
   LineUp.prototype.addNewSingleColumnDialog = function () {
     var that = this;
-    var popup = createPopup('add single columns', undefined);
+    var popup = createPopup(this.$container, 'add single columns', undefined);
     // list all data rows !
     var trData = that.storage.getRawColumns()
 //        .filter(function(d){return (d instanceof LineUpNumberColumn);})
@@ -1362,6 +1417,11 @@ var LineUp;
       });
 
       popup.remove();
+      
+      if (allChecked.length) {
+        that.listeners['columns-changed'](that);
+      }
+
       that.headerUpdateRequired = true;
       that.updateAll();
     });
@@ -1422,7 +1482,7 @@ var LineUp;
 
   LineUp.prototype.reweightStackedColumnDialog = function (col) {
     var that = this;
-    var popup = createPopup('re-weight column "' + col.label + '"', undefined);
+    var popup = createPopup(this.$container, 're-weight column "' + col.label + '"', undefined);
 
     //console.log(col.childrenWeights);
     // list all data rows !
@@ -1452,15 +1512,21 @@ var LineUp;
     var that = this;
     var act = bak;
 
+    var containerHeight = this.$container.node().clientHeight;
+    var height = Math.max(270, Math.min(containerHeight / 2, 470));
+    var popupBG = this.$container.append('div')
+        // var popupBG = d3.select("body").append("div")
+        .attr("class", "lu-popupBG");
 
-    var popup = d3.select("body").append("div")
+    var popup = this.$container.append('div')
       .attr({
         "class": "lu-popup"
       }).style({
-        left: +(window.innerWidth) / 2 - 100 + "px",
-        top: 100 + "px",
-        width: "420px",
-        height: "470px"
+        left: +(this.$container.node().clientWidth) / 2 - 100 + "px",
+        //   top: 100 + "px",
+        top: "0px",
+        width: (height - 50) + "px",
+        height: height + "px"
       })
       .html(
         '<div style="font-weight: bold"> change mapping: </div>' +
@@ -1490,13 +1556,17 @@ var LineUp;
       //console.log(act.domain().toString(), act.range().toString());
       $button.classed('filtered', !isSame(act.range(), original.range()) || !isSame(act.domain(), original.domain()));
       that.listeners['change-filter'](that, selectedColumn);
-      that.storage.resortData({filteredChanged: true});
+      if (!that.config.filtering || !that.config.filtering.external) {
+        that.storage.resortData({filteredChanged: true});
+      }
       that.updateAll(true);
     }
 
     var editorOptions = {
       callback: applyMapping,
-      triggerCallback : 'dragend'
+      triggerCallback : 'dragend',
+      width: height - 50,
+      height: height - 50
     };
     var editor = LineUp.mappingEditor(bak, original.domain(), that.storage.rawdata, access, editorOptions);
     popup.select('.mappingArea').call(editor);
@@ -1508,11 +1578,13 @@ var LineUp;
     popup.select(".ok").on("click", function () {
       applyMapping(act);
       popup.remove();
+      popupBG.remove();
     });
     popup.select('.cancel').on('click', function () {
       selectedColumn.mapping(bak);
       $button.classed('filtered', !isSame(bak.range(), original.range()) || !isSame(bak.domain(), original.domain()));
       popup.remove();
+      popupBG.remove();
     });
     popup.select('.reset').on('click', function () {
       act = bak = original;
@@ -1544,15 +1616,24 @@ var LineUp;
 
     function removeStackedColumn(col) {
       that.storage.removeColumn(col);
+      
+      that.listeners['columns-changed'](that);
+      
       that.headerUpdateRequired = true;
       that.updateAll();
     }
 
     function renameStackedColumn(col) {
-      var x = +(window.innerWidth) / 2 - 100;
-      var y = +100;
+      var x = +(this.$container.node().clientWidth) / 2 - 100;
+      //   var y = +100;
+      var y = 0;
 
-      var popup = d3.select('body').append('div')
+      var popupBG = this.$container.append('div')
+        // var popupBG = d3.select("body").append("div")
+        .attr("class", "lu-popupBG");
+        
+        // ATS: Was d3.select('body').appe...
+      var popup = this.$container.append('div')
         .attr({
           'class': 'lu-popup'
         }).style({
@@ -1575,6 +1656,7 @@ var LineUp;
           col.label = newValue;
           that.updateHeader(that.storage.getColumnLayout(col.columnBundle));
           popup.remove();
+          popupBG.remove();
         } else {
           window.alert('non empty string required');
         }
@@ -1582,6 +1664,7 @@ var LineUp;
 
       popup.select('.cancel').on('click', function () {
         popup.remove();
+        popupBG.remove();
       });
     }
 
@@ -1645,12 +1728,16 @@ var LineUp;
       return;
     }
     var bak = column.filter || [];
-    var popup = d3.select('body').append('div')
+    var popupBG = this.$container.append('div')
+          // var popupBG = d3.select("body").append("div")
+      .attr("class", "lu-popupBG");
+
+    var popup = this.$container.append('div')
       .attr({
         'class': 'lu-popup'
       }).style({
-        left: +(window.innerWidth) / 2 - 100 + 'px',
-        top: 100 + 'px',
+        left: +(this.$container.node().clientWidth) / 2 - 100,
+        top: "0px",
         width: (400) + 'px',
         height: (300) + 'px'
       })
@@ -1702,13 +1789,16 @@ var LineUp;
       column.filter = filter;
       $button.classed('filtered', (filter && filter.length > 0 && filter.length < column.column.categories.length));
       that.listeners['change-filter'](that, column);
-      that.storage.resortData({filteredChanged: true});
+      if (!that.config.filtering || !that.config.filtering.external) {
+        that.storage.resortData({filteredChanged: true});
+      }
       that.updateBody();
     }
 
     popup.select('.cancel').on('click', function () {
       updateData(bak);
       popup.remove();
+      popupBG.remove();
     });
     popup.select('.reset').on('click', function () {
       trData.forEach(function (d) {
@@ -1728,6 +1818,7 @@ var LineUp;
       }
       updateData(f);
       popup.remove();
+      popupBG.remove();
     });
   };
 
@@ -1736,12 +1827,21 @@ var LineUp;
       //can't filter other than string columns
       return;
     }
-    var pos = $(this.$header.node()).offset();
-    pos.left += column.offsetX;
-    pos.top += column.offsetY;
+    // var pos = $(this.$header.node()).offset();
+    // pos.left += column.offsetX;
+    // // pos.top += column.offsetY;
+    var pos = {
+      left: column.offsetX,
+      top: 0
+    //   top: column.offsetY
+    };
     var bak = column.filter || '';
 
-    var popup = d3.select('body').append('div')
+    var popupBG = this.$container.append('div')
+      // var popupBG = d3.select("body").append("div")
+      .attr("class", "lu-popupBG");
+
+    var popup = this.$container.append('div')
       .attr({
         'class': 'lu-popup2'
       }).style({
@@ -1761,22 +1861,30 @@ var LineUp;
       column.filter = filter;
       $button.classed('filtered', (filter && filter.length > 0));
       that.listeners['change-filter'](that, column);
-      that.storage.resortData({filteredChanged: true});
+      if (!that.config.filtering || !that.config.filtering.external) {
+        that.storage.resortData({filteredChanged: true});
+      }
       that.updateBody();
+    }
+    
+    function getElementById(id) {
+      return $(that.$container.node()).find("#" + id)[0];
     }
 
     popup.select('.cancel').on('click', function () {
-      document.getElementById('popupInputText').value = bak;
+      getElementById('popupInputText').value = bak;
       updateData(bak);
       popup.remove();
+      popupBG.remove();
     });
     popup.select('.reset').on('click', function () {
-      document.getElementById('popupInputText').value = '';
+      getElementById('popupInputText').value = '';
       updateData(null);
     });
     popup.select('.ok').on('click', function () {
-      updateData(document.getElementById('popupInputText').value);
+      updateData(getElementById('popupInputText').value);
       popup.remove();
+      popupBG.remove();
     });
   };
 
@@ -1844,7 +1952,7 @@ var LineUp;
       var left = container.scrollLeft;
       //at least one row changed
       that.scrolled(act, left);
-      if (Math.abs(prevScrollTop - act) >= rowHeight * backupRows) {
+      if (Math.abs(prevScrollTop - act) >= rowHeight * (backupRows / 2)) {
         prevScrollTop = act;
         that.updateBody();
       }
@@ -1915,7 +2023,9 @@ var LineUp;
 
       if (that.config.columnBundles.primary.sortedColumn instanceof LineUp.LayoutStackedColumn) {
         that.listeners['change-sortcriteria'](that, that.config.columnBundles.primary.sortedColumn);
-        that.storage.resortData({column: that.config.columnBundles.primary.sortedColumn});
+        if (!that.config.sorting || !that.config.sorting.external) {
+          that.storage.resortData({column: that.config.columnBundles.primary.sortedColumn});
+        }
         that.updateBody(that.storage.getColumnLayout(), that.storage.getData(), false);
       }
 //        that.updateBody(that.storage.getColumnLayout(), that.storage.getData())
@@ -2378,8 +2488,9 @@ var LineUp;
           cols.forEach(function (d) {
             d.flattenMe(flat);
           });
+          var generator = that.config.histograms && that.config.histograms.generator;
           flat.forEach(function (col) {
-            col.prepare(bundle.data, that.config.renderingOptions.histograms);
+            col.prepare(bundle.data, that.config.renderingOptions.histograms, generator);
           });
           bundle.initialSort = false;
         }
@@ -2645,7 +2756,7 @@ var LineUp;
         }
       });
   };
-  function updateText(allHeaders, allRows, svg, config) {
+  function updateText(allHeaders, allRows, svg, config, clipSource) {
     // -- the text columns
 
     var allTextHeaders = allHeaders.filter(function (d) {
@@ -2663,7 +2774,7 @@ var LineUp;
             offsetX: column.offsetX,
             columnW: column.getColumnWidth(),
             isRank: (column instanceof LineUp.LayoutRankColumn),
-            clip: 'url(#clip-B' + column.id + ')'
+            clip: 'url(' + clipSource + '#clip-B' + column.id + ')'
           };
         });
         return dd;
@@ -2684,6 +2795,11 @@ var LineUp;
     textRows
       .attr('x', function (d) {
         return d.offsetX;
+      })
+      .attr({
+        'clip-path': function (d) {
+          return d.clip;
+        }
       })
       .text(function (d) {
         return d.label;
@@ -2913,7 +3029,7 @@ var LineUp;
   function createRepr(col, row) {
     var r =col.getValue(row, 'raw');
     if (col instanceof LineUp.LayoutNumberColumn || col instanceof LineUp.LayoutStackedColumn) {
-      r = isNaN(r) || r.toString() === '' ? '' : +r;
+      r = (r === null || typeof r === 'undefined' ? 0 : isNaN(r) || r.toString() === '' ? '' : +r);
     }
     return r;
   }
@@ -2943,7 +3059,7 @@ var LineUp;
     if (Array.isArray(row)) {
       this.storage.setSelection(row);
       row = row.map(function(d) { return d[primaryKey]; });
-      $rows.classed('selected', function(d) { return row.indexOf(d[primaryKey]) > 0; });
+      $rows.classed('selected', function(d) { return row.indexOf(d[primaryKey]) >= 0; });
     } else if (row) {
       this.storage.setSelection([row]);
       $rows.classed('selected',function(d) { return d[primaryKey] === row[primaryKey]; });
@@ -2982,7 +3098,9 @@ var LineUp;
     var datLength = data.length, rawData = data;
     var rowScale = d3.scale.ordinal()
         .domain(data.map(function (d) {
-          return d[primaryKey];
+          var value = d[primaryKey];
+          
+          return (value === null || typeof value === 'undefined') ? '' : value;
         }))
         .rangeBands([0, (datLength * that.config.svgLayout.rowHeight)], 0, that.config.svgLayout.rowPadding),
       prevRowScale = bundle.prevRowScale || rowScale;
@@ -3012,7 +3130,12 @@ var LineUp;
       transform: function (d) { //init with its previous position
         var prev = prevRowScale(d[primaryKey]);
         if (typeof prev === 'undefined') { //if not defined from the bottom
-          prev = rowScale.range()[1];
+          var range = rowScale.range();
+          if (range && range.length > 0) {
+            prev = range[range.length - 1];
+          } else {
+            prev = 0;
+          }
         }
         return 'translate(' + 0 + ',' + prev + ')';
       }
@@ -3026,7 +3149,8 @@ var LineUp;
     //    //--- update ---
     (this.config.renderingOptions.animation ? allRowsSuper.transition().duration(this.config.svgLayout.animationDuration) : allRowsSuper).attr({
       'transform': function (d) {
-        return  'translate(' + 0 + ',' + rowScale(d[primaryKey]) + ')';
+        var value = d[primaryKey];
+        return  'translate(' + 0 + ',' + (value === null || typeof value === 'undefined' ? 0 : rowScale(value)) + ')';
       }
     });
     var asStacked = showStacked(this.config);
@@ -3070,7 +3194,7 @@ var LineUp;
       return textOverlays;
     }
 
-    function renderOverlays($row, textOverlays, clazz, clipPrefix) {
+    function renderOverlays($row, textOverlays, clazz, clipPrefix, clipSource) {
       $row.selectAll('text.' + clazz).data(textOverlays).enter().append('text').
         attr({
           'class': 'tableData ' + clazz,
@@ -3079,7 +3203,7 @@ var LineUp;
           },
           y: that.config.svgLayout.rowHeight / 2,
           'clip-path': function (d) {
-            return 'url(#clip-' + clipPrefix + d.id + ')';
+            return 'url(' + (clipSource || '') + '#clip-' + clipPrefix + d.id + ')';
           }
         }).text(function (d) {
           return d.label;
@@ -3117,7 +3241,7 @@ var LineUp;
               return Math.max(d.w - 2, 0);
             }
           });
-        renderOverlays($row, textOverlays, 'hoveronly', 'M');
+        renderOverlays($row, textOverlays, 'hoveronly', 'M',  that.getClipSource.apply(this));
 
         function absoluteRowPos(elem) {
           var scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
@@ -3131,7 +3255,7 @@ var LineUp;
         }
         if (that.config.interaction.tooltips) {
           that.tooltip.show(generateTooltip(row, allHeaders, that.config), {
-            x: d3.event.x + 10,
+            x: d3.mouse(that.$container.node())[0] + 10,
             y: absoluteRowPos(this),
             height: that.config.svgLayout.rowHeight
           });
@@ -3142,7 +3266,7 @@ var LineUp;
       mousemove: function () {
         if (that.config.interaction.tooltips) {
           that.tooltip.move({
-            x: d3.event.x
+            x: d3.mouse(that.$container.node())[0]
           });
         }
       },
@@ -3167,6 +3291,7 @@ var LineUp;
               //remove the last one
               that.listeners['selected'](null);
             }
+            allselected.splice(allselected.indexOf(row), 1);
           } else {
             $row.classed('selected', true);
             that.storage.select(row);
@@ -3216,13 +3341,15 @@ var LineUp;
     updateActionBars(headers, allRows, that.config);
 
     LineUp.updateClipPaths(allHeaders, this.$bodySVG, 'B', true);
-    updateText(allHeaders, allRows, svg, that.config);
+    //Get and set the clip source to be used for rendering overlays. Scoping context to a related DOM element.
+    var clipSource = that.getClipSource.apply(this.$container[0][0]);
+    updateText(allHeaders, allRows, svg, that.config, clipSource);
     updateCategorical(allHeaders, allRows, svg, that.config);
     if (that.config.renderingOptions.values) {
       allRowsSuper.classed('values', true);
       allRowsSuper.each(function (row) {
         var $row = d3.select(this);
-        renderOverlays($row, createOverlays(row), 'valueonly', 'B');
+        renderOverlays($row, createOverlays(row), 'valueonly', 'B', clipSource);
       });
     } else {
       allRowsSuper.classed('values', false).selectAll('text.valueonly').remove();
@@ -3359,7 +3486,8 @@ var LineUp;
       }
     })
       .on('click', function (d) {
-        if (d3.event.defaultPrevented || d instanceof LineUp.LayoutEmptyColumn || d instanceof LineUp.LayoutActionColumn) {
+        // Uncharted (Dario): Removed click functionality from LayoutRankColumn instances
+        if (d3.event.defaultPrevented || d instanceof LineUp.LayoutEmptyColumn || d instanceof LineUp.LayoutActionColumn || d instanceof LineUp.LayoutRankColumn) {
           return;
         }
         // no sorting for empty stacked columns !!!
@@ -3378,14 +3506,17 @@ var LineUp;
 
         bundle.sortedColumn = d;
         that.listeners['change-sortcriteria'](this, d, bundle.sortingOrderAsc);
-		that.storage.resortData({column: d, asc: bundle.sortingOrderAsc});
+        if (!that.config.sorting || !that.config.sorting.external) {
+          that.storage.resortData({column: d, asc: bundle.sortingOrderAsc});
+        }
         that.updateAll(false);
       });
 
 
     allHeaders.select('.labelBG').attr({
       width: function (d) {
-        return d.getColumnWidth() - 5;
+        // Uncharted (Dario): Added safety check to avoid negative values.
+        return Math.max(d.getColumnWidth() - 5, 0);
       },
       height: function (d) {
         return d.height;
@@ -3399,26 +3530,27 @@ var LineUp;
     if (this.config.renderingOptions.histograms) {
       allNumberHeaders.selectAll('g.hist').each(function (d) {
         var $this = d3.select(this).attr('transform','scale(1,'+ (d.height)+')');
-        var h = d.hist;
-        if (!h) {
-          return;
-        }
-        var s = d.value2pixel.copy().range([0, d.value2pixel.range()[1]-5]);
-        var $hist = $this.selectAll('rect').data(h);
-        $hist.enter().append('rect');
-        $hist.attr({
-          x : function(bin) {
-            return s(bin.x);
-          },
-          width: function(bin) {
-            return s(bin.dx);
-          },
-          y: function(bin) {
-            return 1-bin.y;
-          },
-          height: function(bin) {
-            return bin.y;
+        d.getHist(function(h) {
+          if (!h) {
+            return;
           }
+          var s = d.value2pixel.copy().range([0, d.value2pixel.range()[1]-5]);
+          var $hist = $this.selectAll('rect').data(h);
+          $hist.enter().append('rect');
+          $hist.attr({
+            x : function(bin) {
+              return s(bin.x);
+            },
+            width: function(bin) {
+              return s(bin.dx);
+            },
+            y: function(bin) {
+              return 1-bin.y;
+            },
+            height: function(bin) {
+              return bin.y;
+            }
+          });
         });
       });
     } else {
@@ -3433,7 +3565,8 @@ var LineUp;
       }).append('rect').attr({
         'class': 'weightHandle',
         x: function (d) {
-          return d.getColumnWidth() - 5;
+          // Uncharted (Dario): Added safety check to avoid negative values.
+          return Math.max(d.getColumnWidth() - 5, 0);
         },
         y: 0,
         width: 5
@@ -3441,7 +3574,8 @@ var LineUp;
 
       allHeaders.select('.weightHandle').attr({
         x: function (d) {
-          return (d.getColumnWidth() - 5);
+          // Uncharted (Dario): Added safety check to avoid negative values.
+          return Math.max(d.getColumnWidth() - 5, 0);
         },
         height: function (d) {
           return d.height;
@@ -3455,6 +3589,9 @@ var LineUp;
       x: config.htmlLayout.labelLeftPadding
     });
     allHeadersEnter.append('title');
+    
+    //Get and set the clip source to be used for rendering overlays. Scoping context to a related DOM element.
+    var clipSource = that.getClipSource.apply(this.$container[0][0]);
 
     allHeaders.select('.headerLabel')
       .classed('sortedColumn', function (d) {
@@ -3469,7 +3606,7 @@ var LineUp;
           return d.height * 3 / 4;
         },
         'clip-path': function (d) {
-          return 'url(#clip-H' + d.id + ')';
+          return 'url('+ clipSource +'#clip-H' + d.id + ')';
         }
       }).text(function (d) {
         return d.getLabel();
@@ -3518,10 +3655,11 @@ var LineUp;
           'class': 'singleColumnDelete',
           text: '\uf014',
           filter: function (d) {
-            return (d instanceof LineUp.LayoutStackedColumn || d instanceof LineUp.LayoutEmptyColumn || d instanceof LineUp.LayoutActionColumn) ? [] : [d];
+            return (/* ATS: Added this one */d instanceof LineUp.LayoutRankColumn || d instanceof LineUp.LayoutStackedColumn || d instanceof LineUp.LayoutEmptyColumn || d instanceof LineUp.LayoutActionColumn) ? [] : [d];
           },
           action: function (d) {
             that.storage.removeColumn(d);
+            that.listeners['columns-changed'](that);
             that.headerUpdateRequired = true;
             that.updateAll();
           }
@@ -3582,7 +3720,11 @@ var LineUp;
       }
     });
 
-    addColumnButtonEnter.append('rect').attr({
+    addColumnButtonEnter.append("title").text(function(d) { return d.title; });
+    
+    addColumnButtonEnter
+    .filter(function(d) { return !d.render; })
+    .append('rect').attr({
       x: 0,
       y: 0,
       rx: 5,
@@ -3593,24 +3735,41 @@ var LineUp;
       height: function (d) {
         return d.h;
       }
-    }).on('click', function (d) {
+    })
+    .on('click', function (d) {
       if ($.isFunction(d.action)) {
         d.action.call(that, d);
       } else {
         that[d.action](d);
       }
     });
-
-    addColumnButtonEnter.append('text').attr({
+    
+     addColumnButtonEnter
+    .filter(function(d) { return !d.render; })
+    .append('text').attr({
       x: function (d) {
         return d.w / 2;
       },
       y: function (d) {
         return d.h / 2;
       }
-    }).text('\uf067');
+    })
+    .text(function(d) {
+      return d.text || '\uf067';
+    });
 
-
+    addColumnButtonEnter
+      .filter(function(d) { return !!d.render; })
+      .append(function(d) {
+        return d.render.call(that, d);
+      })
+      .on('click', function (d) {
+        if ($.isFunction(d.action)) {
+          d.action.call(that, d);
+        } else {
+          that[d.action](d);
+        }
+      });
   };
 
   LineUp.prototype.hoverHistogramBin = function (row) {
@@ -3621,11 +3780,17 @@ var LineUp;
     $hists.selectAll('rect').classed('hover',false);
     if (row) {
       this.$header.selectAll('g.hist').each(function(d) {
-        if (d instanceof LineUp.LayoutNumberColumn && d.hist) {
-          var bin = d.binOf(row);
-          if (bin >= 0) {
-            d3.select(this).select('rect:nth-child('+(bin+1)+')').classed('hover',true);
-          }
+          if (d instanceof LineUp.LayoutNumberColumn) {
+            var that = this;
+            d.getHist(function (hist) {
+              if (hist) {
+                d.binOf(row, function(bin) {
+                  if (bin >= 0) {
+                    d3.select(that).select('rect:nth-child('+(bin+1)+')').classed('hover',true);
+                  }
+                });
+              }
+          });
         }
       });
     }
@@ -3759,7 +3924,8 @@ var LineUp;
         } else {
           that.storage.moveColumn(this.__data__, hitted.column, hitted.insert);
         }
-
+        
+        that.listeners['columns-changed'](that);
 //            that.layoutHeaders(that.storage.getColumnLayout());
         that.headerUpdateRequired = true;
         that.updateAll();
@@ -3769,6 +3935,9 @@ var LineUp;
       if (hitted == null && moved) {
         that.headerUpdateRequired = true;
         that.storage.removeColumn(this.__data__);
+        
+        that.listeners['columns-changed'](that);
+        
         that.updateAll();
       }
     }
@@ -3783,9 +3952,29 @@ var LineUp;
   LineUp.prototype.addNewEmptyStackedColumn = function () {
     this.storage.addStackedColumn(null, -1);
     this.headerUpdateRequired = true;
+        
+    this.listeners['columns-changed'](this);
+    
     this.updateAll();
   };
 
+  LineUp.prototype.clearSelection = function () {
+    this.select();
+  };
+
+  /**
+   * Called to retrieve the relevant clip source. If Lineup is loaded inside an iFrame
+   * directly (without a src), we will need to check if the documentURI is different
+   * than the baseURI. If its different we should use absolute IRI references instead
+   * of relative IRI references. This is needed to support lineup view in PowerBI for Firefox v45.
+   */
+  LineUp.prototype.getClipSource = function() {
+    if (this.ownerDocument &&
+        this.ownerDocument.documentURI !== this.ownerDocument.baseURI) {
+      return this.ownerDocument.documentURI;
+    }
+    return '';
+  };
 
   /**
    * called when a Header width changed, calls {@link updateHeader}

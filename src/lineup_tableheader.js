@@ -126,7 +126,8 @@ var LineUp;
       }
     })
       .on('click', function (d) {
-        if (d3.event.defaultPrevented || d instanceof LineUp.LayoutEmptyColumn || d instanceof LineUp.LayoutActionColumn) {
+        // Uncharted (Dario): Removed click functionality from LayoutRankColumn instances
+        if (d3.event.defaultPrevented || d instanceof LineUp.LayoutEmptyColumn || d instanceof LineUp.LayoutActionColumn || d instanceof LineUp.LayoutRankColumn) {
           return;
         }
         // no sorting for empty stacked columns !!!
@@ -145,14 +146,17 @@ var LineUp;
 
         bundle.sortedColumn = d;
         that.listeners['change-sortcriteria'](this, d, bundle.sortingOrderAsc);
-		that.storage.resortData({column: d, asc: bundle.sortingOrderAsc});
+        if (!that.config.sorting || !that.config.sorting.external) {
+          that.storage.resortData({column: d, asc: bundle.sortingOrderAsc});
+        }
         that.updateAll(false);
       });
 
 
     allHeaders.select('.labelBG').attr({
       width: function (d) {
-        return d.getColumnWidth() - 5;
+        // Uncharted (Dario): Added safety check to avoid negative values.
+        return Math.max(d.getColumnWidth() - 5, 0);
       },
       height: function (d) {
         return d.height;
@@ -166,26 +170,27 @@ var LineUp;
     if (this.config.renderingOptions.histograms) {
       allNumberHeaders.selectAll('g.hist').each(function (d) {
         var $this = d3.select(this).attr('transform','scale(1,'+ (d.height)+')');
-        var h = d.hist;
-        if (!h) {
-          return;
-        }
-        var s = d.value2pixel.copy().range([0, d.value2pixel.range()[1]-5]);
-        var $hist = $this.selectAll('rect').data(h);
-        $hist.enter().append('rect');
-        $hist.attr({
-          x : function(bin) {
-            return s(bin.x);
-          },
-          width: function(bin) {
-            return s(bin.dx);
-          },
-          y: function(bin) {
-            return 1-bin.y;
-          },
-          height: function(bin) {
-            return bin.y;
+        d.getHist(function(h) {
+          if (!h) {
+            return;
           }
+          var s = d.value2pixel.copy().range([0, d.value2pixel.range()[1]-5]);
+          var $hist = $this.selectAll('rect').data(h);
+          $hist.enter().append('rect');
+          $hist.attr({
+            x : function(bin) {
+              return s(bin.x);
+            },
+            width: function(bin) {
+              return s(bin.dx);
+            },
+            y: function(bin) {
+              return 1-bin.y;
+            },
+            height: function(bin) {
+              return bin.y;
+            }
+          });
         });
       });
     } else {
@@ -200,7 +205,8 @@ var LineUp;
       }).append('rect').attr({
         'class': 'weightHandle',
         x: function (d) {
-          return d.getColumnWidth() - 5;
+          // Uncharted (Dario): Added safety check to avoid negative values.
+          return Math.max(d.getColumnWidth() - 5, 0);
         },
         y: 0,
         width: 5
@@ -208,7 +214,8 @@ var LineUp;
 
       allHeaders.select('.weightHandle').attr({
         x: function (d) {
-          return (d.getColumnWidth() - 5);
+          // Uncharted (Dario): Added safety check to avoid negative values.
+          return Math.max(d.getColumnWidth() - 5, 0);
         },
         height: function (d) {
           return d.height;
@@ -222,6 +229,9 @@ var LineUp;
       x: config.htmlLayout.labelLeftPadding
     });
     allHeadersEnter.append('title');
+    
+    //Get and set the clip source to be used for rendering overlays. Scoping context to a related DOM element.
+    var clipSource = that.getClipSource.apply(this.$container[0][0]);
 
     allHeaders.select('.headerLabel')
       .classed('sortedColumn', function (d) {
@@ -236,7 +246,7 @@ var LineUp;
           return d.height * 3 / 4;
         },
         'clip-path': function (d) {
-          return 'url(#clip-H' + d.id + ')';
+          return 'url('+ clipSource +'#clip-H' + d.id + ')';
         }
       }).text(function (d) {
         return d.getLabel();
@@ -285,10 +295,11 @@ var LineUp;
           'class': 'singleColumnDelete',
           text: '\uf014',
           filter: function (d) {
-            return (d instanceof LineUp.LayoutStackedColumn || d instanceof LineUp.LayoutEmptyColumn || d instanceof LineUp.LayoutActionColumn) ? [] : [d];
+            return (/* ATS: Added this one */d instanceof LineUp.LayoutRankColumn || d instanceof LineUp.LayoutStackedColumn || d instanceof LineUp.LayoutEmptyColumn || d instanceof LineUp.LayoutActionColumn) ? [] : [d];
           },
           action: function (d) {
             that.storage.removeColumn(d);
+            that.listeners['columns-changed'](that);
             that.headerUpdateRequired = true;
             that.updateAll();
           }
@@ -349,7 +360,11 @@ var LineUp;
       }
     });
 
-    addColumnButtonEnter.append('rect').attr({
+    addColumnButtonEnter.append("title").text(function(d) { return d.title; });
+    
+    addColumnButtonEnter
+    .filter(function(d) { return !d.render; })
+    .append('rect').attr({
       x: 0,
       y: 0,
       rx: 5,
@@ -360,24 +375,41 @@ var LineUp;
       height: function (d) {
         return d.h;
       }
-    }).on('click', function (d) {
+    })
+    .on('click', function (d) {
       if ($.isFunction(d.action)) {
         d.action.call(that, d);
       } else {
         that[d.action](d);
       }
     });
-
-    addColumnButtonEnter.append('text').attr({
+    
+     addColumnButtonEnter
+    .filter(function(d) { return !d.render; })
+    .append('text').attr({
       x: function (d) {
         return d.w / 2;
       },
       y: function (d) {
         return d.h / 2;
       }
-    }).text('\uf067');
+    })
+    .text(function(d) {
+      return d.text || '\uf067';
+    });
 
-
+    addColumnButtonEnter
+      .filter(function(d) { return !!d.render; })
+      .append(function(d) {
+        return d.render.call(that, d);
+      })
+      .on('click', function (d) {
+        if ($.isFunction(d.action)) {
+          d.action.call(that, d);
+        } else {
+          that[d.action](d);
+        }
+      });
   };
 
   LineUp.prototype.hoverHistogramBin = function (row) {
@@ -388,11 +420,17 @@ var LineUp;
     $hists.selectAll('rect').classed('hover',false);
     if (row) {
       this.$header.selectAll('g.hist').each(function(d) {
-        if (d instanceof LineUp.LayoutNumberColumn && d.hist) {
-          var bin = d.binOf(row);
-          if (bin >= 0) {
-            d3.select(this).select('rect:nth-child('+(bin+1)+')').classed('hover',true);
-          }
+          if (d instanceof LineUp.LayoutNumberColumn) {
+            var that = this;
+            d.getHist(function (hist) {
+              if (hist) {
+                d.binOf(row, function(bin) {
+                  if (bin >= 0) {
+                    d3.select(that).select('rect:nth-child('+(bin+1)+')').classed('hover',true);
+                  }
+                });
+              }
+          });
         }
       });
     }
@@ -526,7 +564,8 @@ var LineUp;
         } else {
           that.storage.moveColumn(this.__data__, hitted.column, hitted.insert);
         }
-
+        
+        that.listeners['columns-changed'](that);
 //            that.layoutHeaders(that.storage.getColumnLayout());
         that.headerUpdateRequired = true;
         that.updateAll();
@@ -536,6 +575,9 @@ var LineUp;
       if (hitted == null && moved) {
         that.headerUpdateRequired = true;
         that.storage.removeColumn(this.__data__);
+        
+        that.listeners['columns-changed'](that);
+        
         that.updateAll();
       }
     }
@@ -550,9 +592,29 @@ var LineUp;
   LineUp.prototype.addNewEmptyStackedColumn = function () {
     this.storage.addStackedColumn(null, -1);
     this.headerUpdateRequired = true;
+        
+    this.listeners['columns-changed'](this);
+    
     this.updateAll();
   };
 
+  LineUp.prototype.clearSelection = function () {
+    this.select();
+  };
+
+  /**
+   * Called to retrieve the relevant clip source. If Lineup is loaded inside an iFrame
+   * directly (without a src), we will need to check if the documentURI is different
+   * than the baseURI. If its different we should use absolute IRI references instead
+   * of relative IRI references. This is needed to support lineup view in PowerBI for Firefox v45.
+   */
+  LineUp.prototype.getClipSource = function() {
+    if (this.ownerDocument &&
+        this.ownerDocument.documentURI !== this.ownerDocument.baseURI) {
+      return this.ownerDocument.documentURI;
+    }
+    return '';
+  };
 
   /**
    * called when a Header width changed, calls {@link updateHeader}

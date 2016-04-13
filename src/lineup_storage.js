@@ -196,8 +196,9 @@ var LineUp;
           cols.forEach(function (d) {
             d.flattenMe(flat);
           });
+          var generator = that.config.histograms && that.config.histograms.generator;
           flat.forEach(function (col) {
-            col.prepare(bundle.data, that.config.renderingOptions.histograms);
+            col.prepare(bundle.data, that.config.renderingOptions.histograms, generator);
           });
           bundle.initialSort = false;
         }

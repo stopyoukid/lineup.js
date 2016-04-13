@@ -15,8 +15,12 @@ var LineUp;
 //    this.sortedColumn = [];
     this.$container = $container;
     this.tooltip = LineUp.createTooltip($container.node());
+    
+    // Hide default tooltip to avoid undesired artifacts.
+    this.tooltip.hide();
+    
     //trigger hover event
-    this.listeners = d3.dispatch('hover','change-sortcriteria','change-filter', 'selected','multiselected');
+    this.listeners = d3.dispatch('hover','change-sortcriteria','change-filter', 'columns-changed', 'selected','multiselected', 'generate-histogram');
 
     this.config = $.extend(true, {}, LineUp.defaultConfig, config, {
       //TODO internal stuff, should to be extracted
@@ -143,7 +147,7 @@ var LineUp;
       addPlusSigns:false,
       plusSigns: {
         addStackedColumn: {
-         title: 'add stacked column',
+         title: 'Add stacked column',
          action: 'addNewEmptyStackedColumn',
          x: 0, y: 2,
          w: 21, h: 21 // LineUpGlobal.htmlLayout.headerHeight/2-4
@@ -190,6 +194,19 @@ var LineUp;
     this.headerUpdateRequired = true;
     delete this.prevRowScale;
     this.startVis();
+  };
+  
+       /**
+     * change a rendering option
+    * @param option
+    * @param value
+    */
+  LineUp.prototype.changeInteractionOption = function (option, value) {
+    var v = this.config.interaction[option];
+    if (v === value) {
+      return;
+    }
+    this.config.interaction[option] = value;
   };
 
   /**
@@ -278,7 +295,9 @@ var LineUp;
     bundle.sortedColumn = d;
 
     this.listeners['change-sortcriteria'](this, d, bundle.sortingOrderAsc);
-    this.storage.resortData({column: d, asc: bundle.sortingOrderAsc});
+    if (!this.config.sorting || !this.config.sorting.external) {
+      this.storage.resortData({column: d, asc: bundle.sortingOrderAsc});
+    }
     this.updateAll(false, d.columnBundle);
   };
 
@@ -330,7 +349,10 @@ var LineUp;
     //trigger resort
     if (column === this.config.columnBundles[bundle].sortedColumn) {
       this.listeners['change-sortcriteria'](this, column, this.config.columnBundles[bundle]);
-      this.storage.resortData({ key: bundle });
+    
+      if (!this.config.sorting || !this.config.sorting.external) {
+        this.storage.resortData({ key: bundle });
+      }
     }
     this.updateAll(false, bundle);
     return true;
@@ -347,7 +369,10 @@ var LineUp;
     }
     column.filter = filter;
     this.listeners['change-filter'](this, column);
-    this.storage.resortData({filteredChanged: true});
+    
+    if (!this.config.filtering || !this.config.filtering.external) {
+      this.storage.resortData({filteredChanged: true});
+    }
     this.updateBody();
   };
 
