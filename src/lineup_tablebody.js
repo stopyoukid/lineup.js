@@ -30,6 +30,10 @@ var LineUp;
           return shift ? d.offsetX : null;
         },
         width: function (d) {
+          // Empty columns are as wide as their parent
+          if (d instanceof LineUp.LayoutEmptyColumn) {
+              d = d.parent;
+          }
           return Math.max(d.getColumnWidth() - 5, 0);
         }
       });
