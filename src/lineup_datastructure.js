@@ -208,6 +208,16 @@ var LineUp;
       return new LayoutColumn(this.description());
     },
     isFiltered: function () {
+      if (this instanceof LayoutNumberColumn) {
+        var oMapping = this.originalMapping();
+        var oScale = this.scale;
+        if (oMapping && oScale) {
+          var oldDomain = oMapping.domain();
+          var domain = oScale.domain();
+          return domain[0] !== oldDomain[0] || domain[1] !== oldDomain[1];      
+        }
+        return false;
+      }
       return typeof this.filter !== 'undefined' && this.filter !== '' && this.filter !== null;
     },
     filterBy: function (/*row*/) {
