@@ -351,7 +351,7 @@ var LineUp;
       width: height - 50,
       height: height - 50
     };
-    var editor = LineUp.mappingEditor(bak, original.domain(), that.storage.rawdata, access, editorOptions);
+    var editor = LineUp.mappingEditor(bak, original.domain(), that.storage.rawdata, access, editorOptions, this);
     popup.select('.mappingArea').call(editor);
 
     function isSame(a, b) {
@@ -372,7 +372,7 @@ var LineUp;
     popup.select('.reset').on('click', function () {
       act = bak = original;
       applyMapping(original);
-      editor = LineUp.mappingEditor(bak, original.domain(), that.storage.rawdata, access, editorOptions);
+      editor = LineUp.mappingEditor(bak, original.domain(), that.storage.rawdata, access, editorOptions, that);
       popup.selectAll('.mappingArea *').remove();
       popup.select('.mappingArea').call(editor);
     });
