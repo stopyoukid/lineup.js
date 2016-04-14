@@ -208,7 +208,7 @@ var LineUp;
       return new LayoutColumn(this.description());
     },
     isFiltered: function () {
-      return typeof this.filter !== 'undefined';
+      return typeof this.filter !== 'undefined' && this.filter !== '' && this.filter !== null;
     },
     filterBy: function (/*row*/) {
       return true;
