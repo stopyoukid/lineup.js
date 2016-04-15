@@ -60,10 +60,9 @@ var LineUp;
       this.$headerSVG.attr('height',this.config.htmlLayout.headerHeight);
       this.$headerSVG.append('defs').attr('class', 'columnheader');
       this.$header = this.$headerSVG.append('g');
-      this.$bodySVG = this.$table.append('div').attr('class','lu-wrapper').append('svg').attr('class','lu lu-body');
-      $defs = this.$bodySVG.append('defs');
-      $defs.append('defs').attr('class', 'column');
-      $defs.append('defs').attr('class', 'overlay');
+      
+      this.$bodySVG = this.$table.append('div').attr('class','lu-wrapper').append('div').attr('class','lu lu-body');
+      this.$spacer = this.$bodySVG.append('div');
       this.$body = this.$bodySVG;
       scroller = this.initScrolling($($container.node()).find('div.lu-wrapper'), 0);
     }

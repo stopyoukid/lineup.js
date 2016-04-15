@@ -55,32 +55,27 @@ var LineUp;
             label: column.getValue(d, 'raw'),
             offsetX: column.offsetX,
             columnW: column.getColumnWidth(),
-            isRank: (column instanceof LineUp.LayoutRankColumn),
-            clip: 'url(' + clipSource + '#clip-B' + column.id + ')'
+            isRank: (column instanceof LineUp.LayoutRankColumn)
           };
         });
         return dd;
       });
     textRows.enter()
-      .append('text')
+      .append('div')
       .attr({
         'class': function (d) {
           return 'tableData text' + (d.isRank ? ' rank' : '');
         },
-        y: rowCenter,
-        'clip-path': function (d) {
-          return d.clip;
+        style: function (d) {
+            return 'display:inline-block;width:' + d.columnW + "px;position:absolute;overflow:hidden;left:" + offsetX;
         }
       });
     textRows.exit().remove();
 
     textRows
-      .attr('x', function (d) {
-        return d.offsetX;
-      })
       .attr({
-        'clip-path': function (d) {
-          return d.clip;
+        style: function (d) {
+            return 'display:inline-block;width:' + d.columnW + "px;position:absolute;overflow:hidden;left:" + offsetX;
         }
       })
       .text(function (d) {
@@ -403,7 +398,12 @@ var LineUp;
     if (that.config.svgLayout.mode === 'combined') {
       headerShift = that.config.htmlLayout.headerHeight;
     }
-    this.$bodySVG.attr('height', datLength * that.config.svgLayout.rowHeight + headerShift);
+    
+    this.$bodySVG.attr('height', '100%');
+    this.$bodySVG.attr('style', 'overflow-y:auto;height:100%');
+    this.$spacer
+      .attr('style', 'position:absolute;top:0px;height:' + (datLength * that.config.svgLayout.rowHeight + headerShift) + "px")
+      .html("&nbsp;");
 
     var visibleRange = this.selectVisible(data, rowScale);
     if (visibleRange[0] > 0 || visibleRange[1] < data.length) {
@@ -417,32 +417,29 @@ var LineUp;
     allRowsSuper.exit().remove();
 
     // --- append ---
-    var allRowsSuperEnter = allRowsSuper.enter().append('g').attr({
-      'class': 'row',
-      transform: function (d) { //init with its previous position
-        var prev = prevRowScale(d[primaryKey]);
-        if (typeof prev === 'undefined') { //if not defined from the bottom
-          var range = rowScale.range();
-          if (range && range.length > 0) {
-            prev = range[range.length - 1];
-          } else {
-            prev = 0;
+    var allRowsSuperEnter = allRowsSuper.enter().append('div')
+      .attr({
+        style: function (d) { //init with its previous position
+          var prev = prevRowScale(d[primaryKey]);
+          if (typeof prev === 'undefined') { //if not defined from the bottom
+            var range = rowScale.range();
+            if (range && range.length > 0) {
+              prev = range[range.length - 1];
+            } else {
+              prev = 0;
+            }
           }
-        }
-        return 'translate(' + 0 + ',' + prev + ')';
-      }
-    });
-    allRowsSuperEnter.append('rect').attr({
-      'class': 'filler',
-      width: '100%',
-      height: that.config.svgLayout.rowHeight
-    });
+          return 'position:absolute;transform:translate(0px, ' + prev + 'px)';//position:absolute;top:' + prev + "px";
+        },
+        'class': 'row'
+      });
 
     //    //--- update ---
     (this.config.renderingOptions.animation ? allRowsSuper.transition().duration(this.config.svgLayout.animationDuration) : allRowsSuper).attr({
-      'transform': function (d) {
+      style: function (d) { //init with its previous position
         var value = d[primaryKey];
-        return  'translate(' + 0 + ',' + (value === null || typeof value === 'undefined' ? 0 : rowScale(value)) + ')';
+        var prev = (value === null || typeof value === 'undefined' ? 0 : rowScale(value));
+        return 'position:absolute;transform:translate(0px, ' + prev + 'px)';//position:absolute;top:' + prev + "px";
       }
     });
     var asStacked = showStacked(this.config, this);
@@ -489,15 +486,11 @@ var LineUp;
     function renderOverlays($row, textOverlays, clazz, clipPrefix, clipSource) {
       var overlays = $row.selectAll('text.' + clazz);
       var tmp = overlays.data(textOverlays);
-      tmp.enter().append('text').
+      tmp.enter().append('div').
         attr({
           'class': 'tableData ' + clazz,
-          x: function (d) {
-            return d.x;
-          },
-          y: that.config.svgLayout.rowHeight / 2,
-          'clip-path': function (d) {
-            return 'url(' + (clipSource || '') + '#clip-' + clipPrefix + d.id + ')';
+          'style': function(d) {
+            return "position:absolute;left:" + d.x + "px";
           }
         }).text(function (d) {
           return d.label;
@@ -508,12 +501,8 @@ var LineUp;
       // update x on update
       overlays
         .attr({
-          x: function (d) {
-            return d.x;
-          },
-          y: that.config.svgLayout.rowHeight / 2,
-          'clip-path': function (d) {
-            return 'url(' + (clipSource || '') + '#clip-' + clipPrefix + d.id + ')';
+          'style': function(d) {
+            return "position:absolute;left:" + d.x + "px";
           }
         }).text(function(d) { 
           return d.label;
