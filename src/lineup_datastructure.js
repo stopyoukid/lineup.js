@@ -362,6 +362,12 @@ var LineUp;
       if (isNaN(r) || typeof r === 'undefined') {
         return 0;
       }
+      
+      // If there is no domain on the data, then just return a "full" bar, so it looks like there is some data
+      var d = this.scale.domain();
+      if (d[0] === d[1]) {
+          return this.value2pixel.range()[1];
+      }
       return this.value2pixel(r);
     },
     filterBy : function (row) {
