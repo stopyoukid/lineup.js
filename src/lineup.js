@@ -141,7 +141,7 @@ var LineUp;
       /**
        * number of backup rows to keep to avoid updating on every small scroll thing
        */
-      backupScrollRows: 4,
+      backupScrollRows: 10,
       animationDuration: 1000,
       addPlusSigns:false,
       plusSigns: {

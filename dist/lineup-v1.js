@@ -146,7 +146,7 @@ var LineUp;
       /**
        * number of backup rows to keep to avoid updating on every small scroll thing
        */
-      backupScrollRows: 4,
+      backupScrollRows: 10,
       animationDuration: 1000,
       addPlusSigns:false,
       plusSigns: {
@@ -2849,10 +2849,12 @@ var LineUp;
           return {
             value: column.getValue(d),
             label: column.getValue(d, 'raw'),
-            offsetX: column.offsetX,
+            offsetX: column.offsetX + 5,
             width: Math.max(column.getColumnWidth() - 5, 0),
             isRank: (column instanceof LineUp.LayoutRankColumn)
           };
+        }).filter(function(d) {
+          return !!d.label;
         });
         return dd;
       });
@@ -3216,7 +3218,16 @@ var LineUp;
       return d[primaryKey];
     });
     allRowsSuper.exit().remove();
-
+    
+    function rowStyler() {
+      return [
+        "position:absolute",
+        "height:" + that.config.svgLayout.rowHeight + "px",
+        "padding-top:5px",
+        "width:100%;"
+      ].join(";");
+    }
+ 
     // --- append ---
     allRowsSuper.enter().append('div')
       .attr({
@@ -3230,7 +3241,7 @@ var LineUp;
               prev = 0;
             }
           }
-          return 'position:absolute;transform:translate(0px, ' + prev + 'px)';//position:absolute;top:' + prev + "px";
+          return rowStyler(d) + 'transform:translate(0px, ' + Math.ceil(prev) + 'px)';//position:absolute;top:' + Math.ceil(prev) + "px";
         },
         'class': 'row'
       });
@@ -3240,7 +3251,7 @@ var LineUp;
       style: function (d) { //init with its previous position
         var value = d[primaryKey];
         var prev = (value === null || typeof value === 'undefined' ? 0 : rowScale(value));
-        return 'position:absolute;transform:translate(0px, ' + prev + 'px)';//position:absolute;top:' + prev + "px";
+        return rowStyler(d) + 'transform:translate(0px, ' + Math.ceil(prev) + 'px)';//position:absolute;top:' + Math.ceil(prev) + "px";
       }
     });
     var asStacked = showStacked(this.config, this);
