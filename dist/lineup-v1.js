@@ -1,4 +1,4 @@
-/*! lineup-v1 - v0.1.2 - 2016-04-14
+/*! lineup-v1 - v0.1.3 - 2016-04-15
 * https://github.com/stopyoukid/lineup.js
 * Copyright (c) 2016 ; Licensed BSD */
 (function() {
@@ -3287,7 +3287,8 @@ var LineUp;
 
     function renderOverlays($row, textOverlays, clazz, clipPrefix, clipSource) {
       var overlays = $row.selectAll('text.' + clazz);
-      overlays.data(textOverlays).enter().append('text').
+      var tmp = overlays.data(textOverlays);
+      tmp.enter().append('text').
         attr({
           'class': 'tableData ' + clazz,
           x: function (d) {
@@ -3301,7 +3302,7 @@ var LineUp;
           return d.label;
         });
         
-      overlays.remove();
+      tmp.exit().remove();
 
       // update x on update
       overlays
@@ -3313,6 +3314,8 @@ var LineUp;
           'clip-path': function (d) {
             return 'url(' + (clipSource || '') + '#clip-' + clipPrefix + d.id + ')';
           }
+        }).text(function(d) { 
+          return d.label;
         });
     }
 
