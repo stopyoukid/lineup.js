@@ -65,10 +65,9 @@ var LineUp;
       this.$headerSVG.attr('height',this.config.htmlLayout.headerHeight);
       this.$headerSVG.append('defs').attr('class', 'columnheader');
       this.$header = this.$headerSVG.append('g');
-      this.$bodySVG = this.$table.append('div').attr('class','lu-wrapper').append('svg').attr('class','lu lu-body');
-      $defs = this.$bodySVG.append('defs');
-      $defs.append('defs').attr('class', 'column');
-      $defs.append('defs').attr('class', 'overlay');
+      
+      this.$bodySVG = this.$table.append('div').attr('class','lu-wrapper').append('div').attr('class','lu lu-body');
+      this.$spacer = this.$bodySVG.append('div');
       this.$body = this.$bodySVG;
       scroller = this.initScrolling($($container.node()).find('div.lu-wrapper'), 0);
     }
@@ -2837,14 +2836,12 @@ var LineUp;
         }
       });
   };
-  function updateText(allHeaders, allRows, svg, config, clipSource) {
+  function updateText(allHeaders, allRows) {
     // -- the text columns
 
     var allTextHeaders = allHeaders.filter(function (d) {
       return d instanceof LineUp.LayoutCategoricalColumn || d instanceof LineUp.LayoutStringColumn|| d instanceof LineUp.LayoutRankColumn;
     });
-
-    var rowCenter = (config.svgLayout.rowHeight / 2);
 
     var textRows = allRows.selectAll('.tableData.text')
       .data(function (d) {
@@ -2853,35 +2850,37 @@ var LineUp;
             value: column.getValue(d),
             label: column.getValue(d, 'raw'),
             offsetX: column.offsetX,
-            columnW: column.getColumnWidth(),
-            isRank: (column instanceof LineUp.LayoutRankColumn),
-            clip: 'url(' + clipSource + '#clip-B' + column.id + ')'
+            width: Math.max(column.getColumnWidth() - 5, 0),
+            isRank: (column instanceof LineUp.LayoutRankColumn)
           };
         });
         return dd;
       });
+      
+    function styler (d) {
+      return [
+        "position:absolute",
+        "display:inline-block",
+        "overflow:hidden",
+        "white-space:nowrap",
+        "text-overflow:ellipsis",
+        "left:" + d.offsetX + "px",
+        "width:" + d.width + "px"
+      ].join(";");
+    }
+    
     textRows.enter()
-      .append('text')
+      .append('div')
       .attr({
         'class': function (d) {
           return 'tableData text' + (d.isRank ? ' rank' : '');
         },
-        y: rowCenter,
-        'clip-path': function (d) {
-          return d.clip;
-        }
+        style: styler
       });
     textRows.exit().remove();
 
     textRows
-      .attr('x', function (d) {
-        return d.offsetX;
-      })
-      .attr({
-        'clip-path': function (d) {
-          return d.clip;
-        }
-      })
+      .attr("style", styler)
       .text(function (d) {
         return d.label;
       });
@@ -2978,28 +2977,28 @@ var LineUp;
         });
         return data;
       });
-
+    var height = config.svgLayout.rowHeight - config.svgLayout.rowBarPadding*2;
+    function styler (d) {
+      return [
+        "position:absolute",
+        "left:" + d.offsetX + "px",
+        "width:" + Math.max(+d.value - 7, 0) + "px",
+        "height:" + height + "px",
+        "background-color:" + config.colorMapping.get(d.key)
+      ].join(";");
+    }
+    
     barRows.enter()
-      .append('rect')
+      .append('div')
       .attr({
         'class': 'tableData bar',
-        y: config.svgLayout.rowBarPadding,
-        height: config.svgLayout.rowHeight - config.svgLayout.rowBarPadding*2
+        'style': styler
       });
     barRows.exit().remove();
 
     barRows
       .attr({
-        x: function (d) {
-          return d.offsetX;
-        },
-        width: function (d) {
-          return Math.max(+d.value - 2, 0);
-        }
-      }).style({
-        fill: function (d) {
-          return config.colorMapping.get(d.key);
-        }
+        'style': styler
       });
   }
 
@@ -3019,12 +3018,12 @@ var LineUp;
       });
     stackRows.exit().remove();
     stackRows.enter()
-      .append('g')
+      .append('div')
       .attr('class', 'tableData stacked');
 
     stackRows
-      .attr('transform', function (d) {
-        return 'translate(' + d.parent.offsetX + ',' + 0 + ')';
+      .attr('style', function (d) {
+        return "position:absolute;left:" + d.parent.offsetX + "px";
       });
 
     // -- render all Bars in the Group
@@ -3034,7 +3033,7 @@ var LineUp;
 
     var asStacked = showStacked(config, lineup);
 
-    var allStack = stackRows.selectAll('rect').data(function (d) {
+    var allStack = stackRows.selectAll('div').data(function (d) {
 
         allStackOffset = 0;
         allStackW = 0;
@@ -3052,25 +3051,23 @@ var LineUp;
         });
       }
     );
+
+    function styler (d) {
+        var height = config.svgLayout.rowHeight - config.svgLayout.rowBarPadding*2 ;
+        return [
+          "position:absolute",
+          "height:" + height + "px",
+          "left:" + d.offsetX + "px",
+          "width:" + ((d.width > 2) ? d.width - 2 : d.width) + "px",
+          "background-color:" + config.colorMapping.get(d.child.getDataID())
+        ].join(";");
+    }
+    
     allStack.exit().remove();
-    allStack.enter().append('rect').attr({
-      y: config.svgLayout.rowBarPadding,
-      height: config.svgLayout.rowHeight - config.svgLayout.rowBarPadding*2
-    });
+    allStack.enter().append('div').attr('style', styler);
 
     (_stackTransition ? allStack.transition(config.svgLayout.animationDuration) : allStack)
-      .attr({
-        x: function (d) {
-          return d.offsetX;
-        },
-        width: function (d) {
-          return (d.width > 2) ? d.width - 2 : d.width;
-        }
-      }).style({
-        fill: function (d) {
-          return config.colorMapping.get(d.child.getDataID());
-        }
-      });
+      .attr("style", styler);
   }
 
   function createActions($elem, item, config) {
@@ -3202,7 +3199,12 @@ var LineUp;
     if (that.config.svgLayout.mode === 'combined') {
       headerShift = that.config.htmlLayout.headerHeight;
     }
-    this.$bodySVG.attr('height', datLength * that.config.svgLayout.rowHeight + headerShift);
+    
+    this.$bodySVG.attr('height', '100%');
+    this.$bodySVG.attr('style', 'overflow-y:auto;height:100%');
+    this.$spacer
+      .attr('style', 'position:absolute;top:0px;height:' + (datLength * that.config.svgLayout.rowHeight + headerShift) + "px")
+      .html("&nbsp;");
 
     var visibleRange = this.selectVisible(data, rowScale);
     if (visibleRange[0] > 0 || visibleRange[1] < data.length) {
@@ -3216,32 +3218,29 @@ var LineUp;
     allRowsSuper.exit().remove();
 
     // --- append ---
-    var allRowsSuperEnter = allRowsSuper.enter().append('g').attr({
-      'class': 'row',
-      transform: function (d) { //init with its previous position
-        var prev = prevRowScale(d[primaryKey]);
-        if (typeof prev === 'undefined') { //if not defined from the bottom
-          var range = rowScale.range();
-          if (range && range.length > 0) {
-            prev = range[range.length - 1];
-          } else {
-            prev = 0;
+    allRowsSuper.enter().append('div')
+      .attr({
+        style: function (d) { //init with its previous position
+          var prev = prevRowScale(d[primaryKey]);
+          if (typeof prev === 'undefined') { //if not defined from the bottom
+            var range = rowScale.range();
+            if (range && range.length > 0) {
+              prev = range[range.length - 1];
+            } else {
+              prev = 0;
+            }
           }
-        }
-        return 'translate(' + 0 + ',' + prev + ')';
-      }
-    });
-    allRowsSuperEnter.append('rect').attr({
-      'class': 'filler',
-      width: '100%',
-      height: that.config.svgLayout.rowHeight
-    });
+          return 'position:absolute;transform:translate(0px, ' + prev + 'px)';//position:absolute;top:' + prev + "px";
+        },
+        'class': 'row'
+      });
 
     //    //--- update ---
     (this.config.renderingOptions.animation ? allRowsSuper.transition().duration(this.config.svgLayout.animationDuration) : allRowsSuper).attr({
-      'transform': function (d) {
+      style: function (d) { //init with its previous position
         var value = d[primaryKey];
-        return  'translate(' + 0 + ',' + (value === null || typeof value === 'undefined' ? 0 : rowScale(value)) + ')';
+        var prev = (value === null || typeof value === 'undefined' ? 0 : rowScale(value));
+        return 'position:absolute;transform:translate(0px, ' + prev + 'px)';//position:absolute;top:' + prev + "px";
       }
     });
     var asStacked = showStacked(this.config, this);
@@ -3285,19 +3284,24 @@ var LineUp;
       return textOverlays;
     }
 
-    function renderOverlays($row, textOverlays, clazz, clipPrefix, clipSource) {
-      var overlays = $row.selectAll('text.' + clazz);
+    function renderOverlays($row, textOverlays, clazz) {
+      var overlays = $row.selectAll('div.' + clazz);
+      function styler (d) {
+        return [
+          "position:absolute",
+          "left:" + d.x + "px",
+          "overflow:hidden",
+          "text-overflow:ellipsis",
+          "white-space:nowrap",
+          "width:" + Math.max(+d.w - 7, 0) + "px"
+        ].join(";");
+      }
+    
       var tmp = overlays.data(textOverlays);
-      tmp.enter().append('text').
+      tmp.enter().append('div').
         attr({
           'class': 'tableData ' + clazz,
-          x: function (d) {
-            return d.x;
-          },
-          y: that.config.svgLayout.rowHeight / 2,
-          'clip-path': function (d) {
-            return 'url(' + (clipSource || '') + '#clip-' + clipPrefix + d.id + ')';
-          }
+          'style': styler
         }).text(function (d) {
           return d.label;
         });
@@ -3306,15 +3310,8 @@ var LineUp;
 
       // update x on update
       overlays
-        .attr({
-          x: function (d) {
-            return d.x;
-          },
-          y: that.config.svgLayout.rowHeight / 2,
-          'clip-path': function (d) {
-            return 'url(' + (clipSource || '') + '#clip-' + clipPrefix + d.id + ')';
-          }
-        }).text(function(d) { 
+        .attr('style', styler)
+        .text(function(d) { 
           return d.label;
         });
     }
@@ -3327,30 +3324,7 @@ var LineUp;
         var textOverlays = createOverlays(row);
         //create clip paths which clips the overlay text of the bars
         var shift = rowScale(row[primaryKey]);
-        //generate clip paths for the text columns to avoid text overflow
-        //see http://stackoverflow.com/questions/11742812/cannot-select-svg-foreignobject-element-in-d3
-        //there is a bug in webkit which present camelCase selectors
-        var textClipPath = that.$bodySVG.select('defs.overlay').selectAll(function () {
-          return this.getElementsByTagName('clipPath');
-        }).data(textOverlays);
-        textClipPath.enter().append('clipPath')
-          .append('rect').attr({
-            height: '1000'
-          });
-        textClipPath.exit().remove();
-        textClipPath.attr('y', shift).attr('id', function (d) {
-          return 'clip-M' + d.id;
-        });
-        textClipPath.select('rect')
-          .attr({
-            x: function (d) {
-              return d.x;
-            },
-            width: function (d) {
-              return Math.max(d.w - 2, 0);
-            }
-          });
-        renderOverlays($row, textOverlays, 'hoveronly', 'M',  that.getClipSource.apply(this));
+        renderOverlays($row, textOverlays, 'hoveronly');
 
         function absoluteRowPos(elem) {
           var scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
@@ -3386,7 +3360,7 @@ var LineUp;
         that.hoverHistogramBin(null);
         that.listeners['hover'](null);
         d3.select(this).classed('hover', false);
-        d3.select(this).selectAll('text.hoveronly').remove();
+        d3.select(this).selectAll('.hoveronly').remove();
       },
       click: function (row) {
         var $row = d3.select(this),
@@ -3451,17 +3425,16 @@ var LineUp;
 
     LineUp.updateClipPaths(allHeaders, this.$bodySVG, 'B', true);
     //Get and set the clip source to be used for rendering overlays. Scoping context to a related DOM element.
-    var clipSource = that.getClipSource.apply(this.$container[0][0]);
-    updateText(allHeaders, allRows, svg, that.config, clipSource);
+    updateText(allHeaders, allRows);
     updateCategorical(allHeaders, allRows, svg, that.config);
     if (that.config.renderingOptions.values) {
       allRowsSuper.classed('values', true);
       allRowsSuper.each(function (row) {
         var $row = d3.select(this);
-        renderOverlays($row, createOverlays(row), 'valueonly', 'B', clipSource);
+        renderOverlays($row, createOverlays(row), 'valueonly');
       });
     } else {
-      allRowsSuper.classed('values', false).selectAll('text.valueonly').remove();
+      allRowsSuper.classed('values', false).selectAll('.valueonly').remove();
     }
     //update selections state
     allRowsSuper.classed('selected', function(d) {
