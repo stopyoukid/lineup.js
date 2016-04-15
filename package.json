@@ -12,21 +12,25 @@
     "grunt-jsdoc": "^0.5.4",
     "grunt-contrib-clean": "^0.5.0"
   },
-  "name": "LineUpJS",
-  "description": "LineUp.js: Visual Analysis of Multi-Attribute Rankings ====== LineUp is an interactive technique designed to create, visualize and explore rankings of items based on a set of heterogeneous attributes. This is a D3-based re-implementation with limited functionality relative to the original stand-alone LineUp, which you can check out at http://lineup.caleydo.org",
-  "version": "0.1.0",
-  "main": "src/lineup.js",
+  "name": "lineup-v1",
+  "description": "A fork of the original LineUpJS (https://github.com/Caleydo/lineup.js) to maintain an older version.",
+  "version": "0.1.1",
+  "main": "dist/LineUpJS.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Caleydo/lineup.js.git"
+    "url": "https://github.com/stopyoukid/lineup.js.git"
   },
   "author": "Hendrik Strobelt",
+  "contributors": [{
+     "name": "David Tittsworth",
+     "email": "stopyoukid@gmail.com"
+  }],
   "license": "BSD",
   "bugs": {
-    "url": "https://github.com/Caleydo/lineup.js/issues"
+    "url": "https://github.com/stopyoukid/lineup.js/issues"
   },
-  "homepage": "https://github.com/Caleydo/lineup.js"
+  "homepage": "https://github.com/stopyoukid/lineup.js"
 }
