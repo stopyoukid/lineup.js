@@ -1,5 +1,5 @@
-/*! LineUpJS - v0.1.0 - 2016-04-14
-* https://github.com/Caleydo/lineup.js
+/*! lineup-v1 - v0.1.2 - 2016-04-14
+* https://github.com/stopyoukid/lineup.js
 * Copyright (c) 2016 ; Licensed BSD */
 (function() {
   function LineUpLoader(jQuery, d3, _) {
@@ -751,6 +751,8 @@ var LineUp;
       if (isNaN(r) || typeof r === 'undefined') {
         return 0;
       }
+      
+      // If there is no domain on the data, then just return a "full" bar, so it looks like there is some data
       var d = this.scale.domain();
       if (d[0] === d[1]) {
           return this.value2pixel.range()[1];
