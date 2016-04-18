@@ -1,4 +1,4 @@
-/*! lineup-v1 - v0.1.3 - 2016-04-15
+/*! lineup-v1 - v0.1.3 - 2016-04-18
 * https://github.com/stopyoukid/lineup.js
 * Copyright (c) 2016 ; Licensed BSD */
 (function() {
@@ -602,7 +602,7 @@ var LineUp;
         if (oMapping && oScale) {
           var oldDomain = oMapping.domain();
           var domain = oScale.domain();
-          return domain[0] !== oldDomain[0] || domain[1] !== oldDomain[1];      
+          return !Number.isNaN(domain[0]) && !Number.isNaN(domain[1]) && (domain[0] !== oldDomain[0] || domain[1] !== oldDomain[1]);      
         }
         return false;
       }
@@ -1569,7 +1569,7 @@ var LineUp;
         selectedColumn.filter = undefined;
       }
       //console.log(act.domain().toString(), act.range().toString());
-      $button.classed('filtered', !isSame(act.range(), original.range()) || !isSame(act.domain(), original.domain()));
+      $button.classed('filtered', !isSamePairs(act.range(), original.range()) || !isSamePairs(act.domain(), original.domain()));
       that.listeners['change-filter'](that, selectedColumn);
       if (!that.config.filtering || !that.config.filtering.external) {
         that.storage.resortData({filteredChanged: true});
@@ -1586,8 +1586,24 @@ var LineUp;
     var editor = LineUp.mappingEditor(bak, original.domain(), that.storage.rawdata, access, editorOptions, this);
     popup.select('.mappingArea').call(editor);
 
-    function isSame(a, b) {
-      return $(a).not(b).length === 0 && $(b).not(a).length === 0;
+    function isSamePairs(a, b) {
+      // return $(a).not(b).length === 0 && $(b).not(a).length === 0;
+        if (a && b) {
+          var firstEqual = a[0] === b[0];
+          var secondEqual = a[1] === b[1];
+          
+          // If they are both NaN, then they are equal
+          if (!firstEqual && Number.isNaN(a[0]) && Number.isNaN(b[0])) {
+            firstEqual = true;
+          }
+          
+          // If they are both NaN, then they are equal
+          if (!secondEqual && Number.isNaN(a[1]) && Number.isNaN(b[1])) {
+            secondEqual = true;
+          }
+          return firstEqual && secondEqual;     
+        }
+        return a === b;
     }
 
     popup.select(".ok").on("click", function () {
@@ -1597,7 +1613,7 @@ var LineUp;
     });
     popup.select('.cancel').on('click', function () {
       selectedColumn.mapping(bak);
-      $button.classed('filtered', !isSame(bak.range(), original.range()) || !isSame(bak.domain(), original.domain()));
+      $button.classed('filtered', !isSamePairs(bak.range(), original.range()) || !isSamePairs(bak.domain(), original.domain()));
       popup.remove();
       popupBG.remove();
     });
@@ -1805,13 +1821,17 @@ var LineUp;
     redraw();
 
     function updateData(filter) {
-      column.filter = filter;
-      $button.classed('filtered', (filter && filter.length > 0 && filter.length < column.column.categories.length));
-      that.listeners['change-filter'](that, column);
-      if (!that.config.filtering || !that.config.filtering.external) {
-        that.storage.resortData({filteredChanged: true});
+      var oldFilter = column.filter || false; // Forces falsy values to false
+      filter = filter || false;
+      if (oldFilter !== filter) {
+        column.filter = filter;
+        $button.classed('filtered', (filter && filter.length > 0 && filter.length < column.column.categories.length));
+        that.listeners['change-filter'](that, column);
+        if (!that.config.filtering || !that.config.filtering.external) {
+          that.storage.resortData({filteredChanged: true});
+        }
+        that.updateBody();
       }
-      that.updateBody();
     }
 
     popup.select('.cancel').on('click', function () {
@@ -1877,13 +1897,17 @@ var LineUp;
     var that = this;
 
     function updateData(filter) {
-      column.filter = filter;
-      $button.classed('filtered', (filter && filter.length > 0));
-      that.listeners['change-filter'](that, column);
-      if (!that.config.filtering || !that.config.filtering.external) {
-        that.storage.resortData({filteredChanged: true});
+      var oldFilter = column.filter || false; // Forces falsy values to false
+      filter = filter || false;
+      if (oldFilter !== filter) {
+        column.filter = filter;
+        $button.classed('filtered', (filter && filter.length > 0));
+        that.listeners['change-filter'](that, column);
+        if (!that.config.filtering || !that.config.filtering.external) {
+          that.storage.resortData({filteredChanged: true});
+        }
+        that.updateBody();
       }
-      that.updateBody();
     }
     
     function getElementById(id) {
