@@ -214,7 +214,7 @@ var LineUp;
         if (oMapping && oScale) {
           var oldDomain = oMapping.domain();
           var domain = oScale.domain();
-          return domain[0] !== oldDomain[0] || domain[1] !== oldDomain[1];      
+          return !Number.isNaN(domain[0]) && !Number.isNaN(domain[1]) && (domain[0] !== oldDomain[0] || domain[1] !== oldDomain[1]);      
         }
         return false;
       }
