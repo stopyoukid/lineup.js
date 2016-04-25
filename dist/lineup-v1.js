@@ -1,4 +1,4 @@
-/*! lineup-v1 - v0.1.3 - 2016-04-15
+/*! lineup-v1 - v0.1.3 - 2016-04-25
 * https://github.com/stopyoukid/lineup.js
 * Copyright (c) 2016 ; Licensed BSD */
 (function() {
@@ -603,7 +603,7 @@ var LineUp;
         if (oMapping && oScale) {
           var oldDomain = oMapping.domain();
           var domain = oScale.domain();
-          return domain[0] !== oldDomain[0] || domain[1] !== oldDomain[1];      
+          return !Number.isNaN(domain[0]) && !Number.isNaN(domain[1]) && (domain[0] !== oldDomain[0] || domain[1] !== oldDomain[1]);      
         }
         return false;
       }
@@ -1542,7 +1542,7 @@ var LineUp;
         //   top: 100 + "px",
         top: "0px",
         width: (height - 50) + "px",
-        height: height + "px"
+        // height: height + "px"
       })
       .html(
         '<div style="font-weight: bold"> change mapping: </div>' +
@@ -1570,7 +1570,7 @@ var LineUp;
         selectedColumn.filter = undefined;
       }
       //console.log(act.domain().toString(), act.range().toString());
-      $button.classed('filtered', !isSame(act.range(), original.range()) || !isSame(act.domain(), original.domain()));
+      $button.classed('filtered', !isSamePairs(act.range(), original.range()) || !isSamePairs(act.domain(), original.domain()));
       that.listeners['change-filter'](that, selectedColumn);
       if (!that.config.filtering || !that.config.filtering.external) {
         that.storage.resortData({filteredChanged: true});
@@ -1584,11 +1584,34 @@ var LineUp;
       width: height - 50,
       height: height - 50
     };
-    var editor = LineUp.mappingEditor(bak, original.domain(), that.storage.rawdata, access, editorOptions, this);
+    var domain = original.domain();
+    if (Number.isNaN(domain[0])) {
+      domain[0] = 0;
+    }
+    if (Number.isNaN(domain[1])) {
+      domain[1] = 0;
+    }
+    var editor = LineUp.mappingEditor(bak, domain, that.storage.rawdata, access, editorOptions, this);
     popup.select('.mappingArea').call(editor);
 
-    function isSame(a, b) {
-      return $(a).not(b).length === 0 && $(b).not(a).length === 0;
+    function isSamePairs(a, b) {
+      // return $(a).not(b).length === 0 && $(b).not(a).length === 0;
+        if (a && b) {
+          var firstEqual = a[0] === b[0];
+          var secondEqual = a[1] === b[1];
+          
+          // If they are both NaN, then they are equal
+          if (!firstEqual && Number.isNaN(a[0]) && Number.isNaN(b[0])) {
+            firstEqual = true;
+          }
+          
+          // If they are both NaN, then they are equal
+          if (!secondEqual && Number.isNaN(a[1]) && Number.isNaN(b[1])) {
+            secondEqual = true;
+          }
+          return firstEqual && secondEqual;     
+        }
+        return a === b;
     }
 
     popup.select(".ok").on("click", function () {
@@ -1598,7 +1621,7 @@ var LineUp;
     });
     popup.select('.cancel').on('click', function () {
       selectedColumn.mapping(bak);
-      $button.classed('filtered', !isSame(bak.range(), original.range()) || !isSame(bak.domain(), original.domain()));
+      $button.classed('filtered', !isSamePairs(bak.range(), original.range()) || !isSamePairs(bak.domain(), original.domain()));
       popup.remove();
       popupBG.remove();
     });
@@ -1675,6 +1698,7 @@ var LineUp;
         if (newValue.length > 0) {
           col.label = newValue;
           that.updateHeader(that.storage.getColumnLayout(col.columnBundle));
+          that.listeners['columns-changed'](that);
           popup.remove();
           popupBG.remove();
         } else {
@@ -1759,7 +1783,7 @@ var LineUp;
         left: +(this.$container.node().clientWidth) / 2 - 100,
         top: "0px",
         width: (400) + 'px',
-        height: (300) + 'px'
+        // height: (300) + 'px'
       })
       .html(
       '<span style="font-weight: bold">Edit Filter</span>' +
@@ -1806,13 +1830,17 @@ var LineUp;
     redraw();
 
     function updateData(filter) {
-      column.filter = filter;
-      $button.classed('filtered', (filter && filter.length > 0 && filter.length < column.column.categories.length));
-      that.listeners['change-filter'](that, column);
-      if (!that.config.filtering || !that.config.filtering.external) {
-        that.storage.resortData({filteredChanged: true});
+      var oldFilter = column.filter || false; // Forces falsy values to false
+      filter = filter || false;
+      if (oldFilter !== filter) {
+        column.filter = filter;
+        $button.classed('filtered', (filter && filter.length > 0 && filter.length < column.column.categories.length));
+        that.listeners['change-filter'](that, column);
+        if (!that.config.filtering || !that.config.filtering.external) {
+          that.storage.resortData({filteredChanged: true});
+        }
+        that.updateBody();
       }
-      that.updateBody();
     }
 
     popup.select('.cancel').on('click', function () {
@@ -1878,13 +1906,17 @@ var LineUp;
     var that = this;
 
     function updateData(filter) {
-      column.filter = filter;
-      $button.classed('filtered', (filter && filter.length > 0));
-      that.listeners['change-filter'](that, column);
-      if (!that.config.filtering || !that.config.filtering.external) {
-        that.storage.resortData({filteredChanged: true});
+      var oldFilter = column.filter || false; // Forces falsy values to false
+      filter = filter || false;
+      if (oldFilter !== filter) {
+        column.filter = filter;
+        $button.classed('filtered', (filter && filter.length > 0));
+        that.listeners['change-filter'](that, column);
+        if (!that.config.filtering || !that.config.filtering.external) {
+          that.storage.resortData({filteredChanged: true});
+        }
+        that.updateBody();
       }
-      that.updateBody();
     }
     
     function getElementById(id) {
@@ -2147,14 +2179,22 @@ var LineUp;
       var lowerNormalized = normal2pixel(scale.range()[0]);
       //x coordinate for the score axis upper bound
       var upperNormalized = normal2pixel(scale.range()[1]);
+      
+      var domain = scale.domain();
+      if (Number.isNaN(domain[0])) {
+        domain[0] = 0;
+      }
+      if (Number.isNaN(domain[1])) {
+        domain[1] = 0;
+      }
       //x coordinate for the raw2pixel axis lower bound
-      var lowerRaw = raw2pixel(scale.domain()[0]);
+      var lowerRaw = raw2pixel(domain[0]);
       //x coordinate for the raw2pixel axis upper bound
-      var upperRaw = raw2pixel(scale.domain()[1]);
+      var upperRaw = raw2pixel(domain[1]);
 
       scale = d3.scale.linear()
         .clamp(true)
-        .domain(scale.domain())
+        .domain(domain)
         .range([lowerNormalized, upperNormalized]);
       
       var paths = [
@@ -2855,7 +2895,7 @@ var LineUp;
             offsetX: column.offsetX,
             columnW: column.getColumnWidth(),
             isRank: (column instanceof LineUp.LayoutRankColumn),
-            clip: 'url(' + clipSource + '#clip-B' + column.id + ')'
+            clip: 'url(' + (clipSource || '') + '#clip-B' + column.id + ')'
           };
         });
         return dd;
@@ -3725,7 +3765,7 @@ var LineUp;
           return d.height * 3 / 4;
         },
         'clip-path': function (d) {
-          return 'url('+ clipSource +'#clip-H' + d.id + ')';
+          return 'url('+ (clipSource || '') +'#clip-H' + d.id + ')';
         }
       }).text(function (d) {
         return d.getLabel();
@@ -3816,7 +3856,7 @@ var LineUp;
             return d.getColumnWidth() - config.htmlLayout.buttonRightPadding - (button.offset || 0);
           },
           'clip-path': function (d) {
-            return 'url('+ clipSource +'#clip-H' + d.id + ')';
+            return 'url('+ (clipSource || '') +'#clip-H' + d.id + ')';
           },
           'class': function(d) {
             return 'fontawe ' + button.class + (d.isFiltered() ? ' filtered': '');
