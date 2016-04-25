@@ -465,6 +465,7 @@ var LineUp;
         if (newValue.length > 0) {
           col.label = newValue;
           that.updateHeader(that.storage.getColumnLayout(col.columnBundle));
+          that.listeners['columns-changed'](that);
           popup.remove();
           popupBG.remove();
         } else {
