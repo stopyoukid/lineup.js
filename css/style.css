@@ -214,19 +214,11 @@
     align-items: flex-start;
     text-align: center;
     cursor: default;
-    color: buttontext;
-    background-color: buttonface;
+    color: #333;
+    background-color: #ddd;
     box-sizing: border-box;
     padding: 2px 6px 3px;
-    border: 2px outset buttonface;
-    align-items: flex-start;
-    text-align: center;
-    cursor: default;
-    color: buttontext;
-    background-color: buttonface;
-    box-sizing: border-box;
-    padding: 2px 6px 3px;
-    border: 2px outset buttonface;
+    border: 2px outset #ddd;
 }
 
 .lu-popup .selectionTable {
