@@ -1,4 +1,4 @@
-/*! lineup-v1 - v0.1.3 - 2016-04-25
+/*! lineup-v1 - v0.1.5 - 2016-04-25
 * https://github.com/stopyoukid/lineup.js
 * Copyright (c) 2016 ; Licensed BSD */
 (function() {
@@ -603,7 +603,7 @@ var LineUp;
         if (oMapping && oScale) {
           var oldDomain = oMapping.domain();
           var domain = oScale.domain();
-          return !Number.isNaN(domain[0]) && !Number.isNaN(domain[1]) && (domain[0] !== oldDomain[0] || domain[1] !== oldDomain[1]);      
+          return !isNaN(domain[0]) && !isNaN(domain[1]) && (domain[0] !== oldDomain[0] || domain[1] !== oldDomain[1]);      
         }
         return false;
       }
@@ -1585,10 +1585,10 @@ var LineUp;
       height: height - 50
     };
     var domain = original.domain();
-    if (Number.isNaN(domain[0])) {
+    if (isNaN(domain[0])) {
       domain[0] = 0;
     }
-    if (Number.isNaN(domain[1])) {
+    if (isNaN(domain[1])) {
       domain[1] = 0;
     }
     var editor = LineUp.mappingEditor(bak, domain, that.storage.rawdata, access, editorOptions, this);
@@ -1601,12 +1601,12 @@ var LineUp;
           var secondEqual = a[1] === b[1];
           
           // If they are both NaN, then they are equal
-          if (!firstEqual && Number.isNaN(a[0]) && Number.isNaN(b[0])) {
+          if (!firstEqual && isNaN(a[0]) && isNaN(b[0])) {
             firstEqual = true;
           }
           
           // If they are both NaN, then they are equal
-          if (!secondEqual && Number.isNaN(a[1]) && Number.isNaN(b[1])) {
+          if (!secondEqual && isNaN(a[1]) && isNaN(b[1])) {
             secondEqual = true;
           }
           return firstEqual && secondEqual;     
@@ -2181,10 +2181,10 @@ var LineUp;
       var upperNormalized = normal2pixel(scale.range()[1]);
       
       var domain = scale.domain();
-      if (Number.isNaN(domain[0])) {
+      if (isNaN(domain[0])) {
         domain[0] = 0;
       }
-      if (Number.isNaN(domain[1])) {
+      if (isNaN(domain[1])) {
         domain[1] = 0;
       }
       //x coordinate for the raw2pixel axis lower bound

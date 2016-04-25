@@ -85,10 +85,10 @@ var LineUp;
       var upperNormalized = normal2pixel(scale.range()[1]);
       
       var domain = scale.domain();
-      if (Number.isNaN(domain[0])) {
+      if (isNaN(domain[0])) {
         domain[0] = 0;
       }
-      if (Number.isNaN(domain[1])) {
+      if (isNaN(domain[1])) {
         domain[1] = 0;
       }
       //x coordinate for the raw2pixel axis lower bound
