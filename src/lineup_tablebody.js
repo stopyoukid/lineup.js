@@ -56,7 +56,7 @@ var LineUp;
             offsetX: column.offsetX,
             columnW: column.getColumnWidth(),
             isRank: (column instanceof LineUp.LayoutRankColumn),
-            clip: 'url(' + clipSource + '#clip-B' + column.id + ')'
+            clip: 'url(' + (clipSource || '') + '#clip-B' + column.id + ')'
           };
         });
         return dd;

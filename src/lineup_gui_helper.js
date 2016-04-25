@@ -309,7 +309,7 @@ var LineUp;
         //   top: 100 + "px",
         top: "0px",
         width: (height - 50) + "px",
-        height: height + "px"
+        // height: height + "px"
       })
       .html(
         '<div style="font-weight: bold"> change mapping: </div>' +
@@ -549,7 +549,7 @@ var LineUp;
         left: +(this.$container.node().clientWidth) / 2 - 100,
         top: "0px",
         width: (400) + 'px',
-        height: (300) + 'px'
+        // height: (300) + 'px'
       })
       .html(
       '<span style="font-weight: bold">Edit Filter</span>' +
