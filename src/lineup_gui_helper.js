@@ -351,7 +351,14 @@ var LineUp;
       width: height - 50,
       height: height - 50
     };
-    var editor = LineUp.mappingEditor(bak, original.domain(), that.storage.rawdata, access, editorOptions, this);
+    var domain = original.domain();
+    if (Number.isNaN(domain[0])) {
+      domain[0] = 0;
+    }
+    if (Number.isNaN(domain[1])) {
+      domain[1] = 0;
+    }
+    var editor = LineUp.mappingEditor(bak, domain, that.storage.rawdata, access, editorOptions, this);
     popup.select('.mappingArea').call(editor);
 
     function isSame(a, b) {
