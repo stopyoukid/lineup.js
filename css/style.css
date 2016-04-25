@@ -139,6 +139,43 @@
     opacity: .6;
 }
 
+.lu .row {
+    position: absolute;
+    width: 100%;
+}
+
+.lu .row:hover {
+    cursor: pointer;
+}
+
+.lu .row.selected {
+    background-color: orange;
+}
+
+.lu .row .text {
+    position:absolute;
+    display:inline-block;
+    overflow:hidden;
+    white-space:nowrap;
+    text-overflow:ellipsis;
+    top: 50%;
+    margin-top: -.5em;
+}
+
+.lu .row .hoveronly {
+    position:absolute;
+    display:inline-block;
+    overflow:hidden;
+    white-space:nowrap;
+    text-overflow:ellipsis;
+    top: 50%;
+    margin-top: -.5em;
+}
+
+.lu .row .bar {
+    top: 50%;
+}
+
 .lu .row rect.filler {
     fill: transparent;
 }

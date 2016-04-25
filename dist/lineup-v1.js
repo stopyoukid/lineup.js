@@ -2823,7 +2823,7 @@ var LineUp;
     });
 }(LineUp || (LineUp = {}), d3, jQuery, _));
 
-/* global d3, jQuery, document */
+/* global d3, jQuery */
 var LineUp;
 (function (LineUp, d3, $, undefined) {
   LineUp.prototype = LineUp.prototype || {};
@@ -2885,11 +2885,6 @@ var LineUp;
       
     function styler (d) {
       return [
-        "position:absolute",
-        "display:inline-block",
-        "overflow:hidden",
-        "white-space:nowrap",
-        "text-overflow:ellipsis",
         "left:" + d.offsetX + "px",
         "width:" + d.width + "px"
       ].join(";");
@@ -3010,6 +3005,7 @@ var LineUp;
         "left:" + d.offsetX + "px",
         "width:" + Math.max(+d.value - 7, 0) + "px",
         "height:" + height + "px",
+        "margin-top: -" + (height / 2) + "px",
         "background-color:" + config.colorMapping.get(d.key)
       ].join(";");
     }
@@ -3245,11 +3241,8 @@ var LineUp;
     
     function rowStyler() {
       return [
-        "position:absolute",
-        "height:" + that.config.svgLayout.rowHeight + "px",
-        "padding-top:5px",
-        "width:100%;"
-      ].join(";");
+        "height:" + that.config.svgLayout.rowHeight + "px"
+      ].join(";") + ";";
     }
  
     // --- append ---
@@ -3293,7 +3286,7 @@ var LineUp;
       headers.forEach(function (col) {
           if (col.column instanceof LineUp.LineUpNumberColumn) {
             textOverlays.push({id: col.id, value: col.getValue(row), label: that.config.numberformat(+col.getValue(row,'raw')),
-              x: col.offsetX,
+              x: col.offsetX + 5,
               w: col.getColumnWidth()});
           } else if (col instanceof  LineUp.LayoutStackedColumn) {
             var allStackOffset = 0;
@@ -3323,11 +3316,7 @@ var LineUp;
       var overlays = $row.selectAll('div.' + clazz);
       function styler (d) {
         return [
-          "position:absolute",
           "left:" + d.x + "px",
-          "overflow:hidden",
-          "text-overflow:ellipsis",
-          "white-space:nowrap",
           "width:" + Math.max(+d.w - 7, 0) + "px"
         ].join(";");
       }
@@ -3362,14 +3351,7 @@ var LineUp;
         renderOverlays($row, textOverlays, 'hoveronly');
 
         function absoluteRowPos(elem) {
-          var scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
-          var matrix = elem.getScreenCTM(),
-            tbbox = elem.getBBox(),
-            point = that.$bodySVG.node().createSVGPoint();
-          point.x = tbbox.x;
-          point.y = tbbox.y;
-          point = point.matrixTransform(matrix);
-          return scrollTop + point.y;
+          return $(elem).offset().top;
         }
         if (that.config.interaction.tooltips) {
           that.tooltip.show(generateTooltip(row, allHeaders, that.config), {
