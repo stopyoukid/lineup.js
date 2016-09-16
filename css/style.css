@@ -247,6 +247,17 @@
     text-anchor: middle;
 }
 
+.lu-popup button {
+    align-items: flex-start;
+    text-align: center;
+    cursor: default;
+    color: #333;
+    background-color: #ddd;
+    box-sizing: border-box;
+    padding: 2px 6px 3px;
+    border: 2px outset #ddd;
+}
+
 .lu-popup .selectionTable {
     background: white;
     overflow-x: auto;

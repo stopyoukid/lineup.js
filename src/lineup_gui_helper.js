@@ -309,7 +309,7 @@ var LineUp;
         //   top: 100 + "px",
         top: "0px",
         width: (height - 50) + "px",
-        height: height + "px"
+        // height: height + "px"
       })
       .html(
         '<div style="font-weight: bold"> change mapping: </div>' +
@@ -351,7 +351,14 @@ var LineUp;
       width: height - 50,
       height: height - 50
     };
-    var editor = LineUp.mappingEditor(bak, original.domain(), that.storage.rawdata, access, editorOptions, this);
+    var domain = original.domain();
+    if (isNaN(domain[0])) {
+      domain[0] = 0;
+    }
+    if (isNaN(domain[1])) {
+      domain[1] = 0;
+    }
+    var editor = LineUp.mappingEditor(bak, domain, that.storage.rawdata, access, editorOptions, this);
     popup.select('.mappingArea').call(editor);
 
     function isSamePairs(a, b) {
@@ -361,12 +368,12 @@ var LineUp;
           var secondEqual = a[1] === b[1];
           
           // If they are both NaN, then they are equal
-          if (!firstEqual && Number.isNaN(a[0]) && Number.isNaN(b[0])) {
+          if (!firstEqual && isNaN(a[0]) && isNaN(b[0])) {
             firstEqual = true;
           }
           
           // If they are both NaN, then they are equal
-          if (!secondEqual && Number.isNaN(a[1]) && Number.isNaN(b[1])) {
+          if (!secondEqual && isNaN(a[1]) && isNaN(b[1])) {
             secondEqual = true;
           }
           return firstEqual && secondEqual;     
@@ -458,6 +465,7 @@ var LineUp;
         if (newValue.length > 0) {
           col.label = newValue;
           that.updateHeader(that.storage.getColumnLayout(col.columnBundle));
+          that.listeners['columns-changed'](that);
           popup.remove();
           popupBG.remove();
         } else {
@@ -542,7 +550,7 @@ var LineUp;
         left: +(this.$container.node().clientWidth) / 2 - 100,
         top: "0px",
         width: (400) + 'px',
-        height: (300) + 'px'
+        // height: (300) + 'px'
       })
       .html(
       '<span style="font-weight: bold">Edit Filter</span>' +

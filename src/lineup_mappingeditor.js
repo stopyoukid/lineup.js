@@ -83,14 +83,22 @@ var LineUp;
       var lowerNormalized = normal2pixel(scale.range()[0]);
       //x coordinate for the score axis upper bound
       var upperNormalized = normal2pixel(scale.range()[1]);
+      
+      var domain = scale.domain();
+      if (isNaN(domain[0])) {
+        domain[0] = 0;
+      }
+      if (isNaN(domain[1])) {
+        domain[1] = 0;
+      }
       //x coordinate for the raw2pixel axis lower bound
-      var lowerRaw = raw2pixel(scale.domain()[0]);
+      var lowerRaw = raw2pixel(domain[0]);
       //x coordinate for the raw2pixel axis upper bound
-      var upperRaw = raw2pixel(scale.domain()[1]);
+      var upperRaw = raw2pixel(domain[1]);
 
       scale = d3.scale.linear()
         .clamp(true)
-        .domain(scale.domain())
+        .domain(domain)
         .range([lowerNormalized, upperNormalized]);
       
       var paths = [

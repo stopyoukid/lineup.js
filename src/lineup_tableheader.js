@@ -256,7 +256,7 @@ var LineUp;
           return d.height * 3 / 4;
         },
         'clip-path': function (d) {
-          return 'url('+ clipSource +'#clip-H' + d.id + ')';
+          return 'url('+ (clipSource || '') +'#clip-H' + d.id + ')';
         }
       }).text(function (d) {
         return d.getLabel();
@@ -347,7 +347,7 @@ var LineUp;
             return d.getColumnWidth() - config.htmlLayout.buttonRightPadding - (button.offset || 0);
           },
           'clip-path': function (d) {
-            return 'url('+ clipSource +'#clip-H' + d.id + ')';
+            return 'url('+ (clipSource || '') +'#clip-H' + d.id + ')';
           },
           'class': function(d) {
             return 'fontawe ' + button.class + (d.isFiltered() ? ' filtered': '');
