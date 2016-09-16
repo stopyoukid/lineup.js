@@ -49,17 +49,16 @@ var LineUp;
       $defs.append('defs').attr('class', 'overlay');
       this.$body = this.$table.append('g').attr('class','body').attr('transform', 'translate(0,' + this.config.htmlLayout.headerHeight + ')');
       this.$header = this.$table.append('g').attr('class', 'header');
-      this.$bodySVG = this.$headerSVG = this.$table;
+      this.$bodySVG = this.$headerContainer = this.$table;
 
       scroller = this.initScrolling($($container.node()), this.config.htmlLayout.headerHeight);
     } else {
       //within two svgs with a dedicated header
       $container.classed('lu-mode-separate', true);
       this.$table = $container;
-      this.$headerSVG = this.$table.append('svg').attr('class', 'lu lu-header');
-      this.$headerSVG.attr('height',this.config.htmlLayout.headerHeight);
-      this.$headerSVG.append('defs').attr('class', 'columnheader');
-      this.$header = this.$headerSVG.append('g');
+      this.$headerContainer = this.$table.append('div').attr('class', 'lu lu-header');
+      this.$headerContainer.style({ 'height': this.config.htmlLayout.headerHeight + "px" });
+      this.$header = this.$headerContainer.append('div');
       
       this.$bodySVG = 
         this.$table.append('div')
@@ -75,13 +74,12 @@ var LineUp;
     this.selectVisible = scroller.selectVisible;
     this.onScroll = scroller.onScroll;
 
-    this.$header.append('rect').attr({
+    this.$header.append('div').attr('class', 'main').style({
       width: '100%',
-      height: this.config.htmlLayout.headerHeight,
-      fill: 'lightgray'
+      height: this.config.htmlLayout.headerHeight + "px",
+      "background-color": 'lightgray'
     });
-    this.$header.append('g').attr('class', 'main');
-    this.$header.append('g').attr('class', 'overlay');
+    this.$header.append('div').attr('class', 'overlay');
 
     this.headerUpdateRequired = true;
     this.stackedColumnModified = null;
@@ -125,9 +123,9 @@ var LineUp;
     htmlLayout: {
       headerHeight: 50,
       headerOffset: 2,
-      buttonTopPadding: 10,
+      buttonTopPadding: 3,
       labelLeftPadding: 12,
-      buttonRightPadding: 15,
+      buttonRightPadding: 18,
       buttonWidth: 13
     },
     renderingOptions: {

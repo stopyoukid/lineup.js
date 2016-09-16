@@ -408,12 +408,12 @@ var LineUp;
   LineUp.prototype.stackedColumnOptionsGui = function (selectedColumn) {
     //console.log(selectedColumn);
     var config = this.config;
-    var svgOverlay = this.$header.select('.overlay');
+    var overlay = this.$header.select('.overlay');
     var that = this;
     // remove when clicked on already selected item
     var disappear = (this.stackedColumnModified === selectedColumn);
     if (disappear) {
-      svgOverlay.selectAll('.stackedOption').remove();
+      overlay.selectAll('.stackedOption').remove();
       this.stackedColumnModified = null;
       return;
     }
@@ -489,47 +489,56 @@ var LineUp;
 
     var menuLength = options.length * 100;
 
-    var stackedOptions = svgOverlay.selectAll('.stackedOption').data([
+    var stackedOptions = overlay.selectAll('.stackedOption').data([
       {d: selectedColumn, o: options}
     ]);
     stackedOptions.exit().remove();
 
 
-    var stackedOptionsEnter = stackedOptions.enter().append('g')
+    var stackedOptionsEnter = stackedOptions.enter().append('div')
       .attr({
-        'class': 'stackedOption',
-        'transform': function (d) {
-          return 'translate(' + (d.d.offsetX + d.d.columnWidth - menuLength) + ',' + (config.htmlLayout.headerHeight / 2 - 2) + ')';
-        }
-      });
-    stackedOptionsEnter.append('rect').attr({
-      x: 0,
-      y: 0,
-      width: menuLength,
-      height: config.htmlLayout.headerHeight / 2 - 4
-    });
-    stackedOptionsEnter.selectAll('text').data(function (d) {
-      return d.o;
-    }).enter().append('text')
-      .attr({
-        x: function (d, i) {
-          return i * 100 + 5;
+        'class': 'stackedOption'
+      })
+      .style({
+        "position": "absolute",
+        "left": function (d) {
+          return (d.d.offsetX + d.d.columnWidth - menuLength) + "px";
         },
-        y: config.htmlLayout.headerHeight / 4 - 2
+        top: "calc(" + (config.htmlLayout.headerHeight / 2 - 2) + "px - .5em)",
+        "background-color": "white",
+        width: menuLength + "px",
+        height: (config.htmlLayout.headerHeight / 2 - 4) + "px"
+      });
+    stackedOptionsEnter.selectAll('.stackedOption-action').data(function (d) {
+      return d.o;
+    }).enter().append('div')
+      .attr({
+        "class": "stackedOption-action"
+      })
+      .style({
+        position: "absolute",
+        left: function (d, i) {
+          return (i * 100 + 5) + "px";
+        },
+        top: "calc(" + (config.htmlLayout.headerHeight / 4 - 2) + "px - .5em)"
       })
       .text(function (d) {
         return d.name;
       });
 
-    stackedOptions.selectAll('text').on('click', function (d) {
-      svgOverlay.selectAll('.stackedOption').remove();
+    stackedOptions.selectAll('.stackedOption-action').on('click', function (d) {
+      overlay.selectAll('.stackedOption').remove();
       d.action.call(that, selectedColumn);
+      d3.event.preventDefault();
+      d3.event.stopPropagation();
     });
 
-    stackedOptions.transition().attr({
-      'transform': function (d) {
-        return 'translate(' + (d.d.offsetX + d.d.columnWidth - menuLength) + ',' + (config.htmlLayout.headerHeight / 2 - 2) + ')';
-      }
+    stackedOptions.transition().style({
+      position: "absolute",
+      left: function (d) {
+        return (d.d.offsetX + d.d.columnWidth - menuLength) + "px";
+      },
+      top: "calc(" + (config.htmlLayout.headerHeight / 2 - 2) + "px - .5em)"
     });
   };
 

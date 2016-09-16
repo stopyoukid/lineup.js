@@ -181,7 +181,7 @@ var LineUp;
       return [
         "position:absolute",
         "left:" + d.offsetX + "px",
-        "width:" + Math.max(+d.value - 7, 0) + "px",
+        "width:" + Math.max(+d.value - 2, 0) + "px",
         "height:" + height + "px",
         "margin-top: -" + (height / 2) + "px",
         "background-color:" + config.colorMapping.get(d.key)

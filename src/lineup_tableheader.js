@@ -63,15 +63,15 @@ var LineUp;
     }
     headers = headers || this.storage.getColumnLayout();
 //    console.log('update Header');
-    var rootsvg = this.$header;
-    var svg = rootsvg.select('g.main');
+    var rootHeader = this.$header;
+    var svg = rootHeader.select('.main');
 
     var that = this;
     var config = this.config;
 
     if (this.headerUpdateRequired) {
       this.layoutHeaders(headers);
-      this.$headerSVG.attr('width', this.totalWidth);
+      this.$headerContainer.attr('width', this.totalWidth);
       this.$bodySVG.attr('width', this.totalWidth);
       this.headerUpdateRequired = false;
     }
@@ -82,9 +82,6 @@ var LineUp;
     });
     //reverse order to render from right to left
     allHeaderData.reverse();
-
-    LineUp.updateClipPaths(allHeaderData, this.$headerSVG, 'H', false, 'columnheader');
-    //console.log(allHeaderData);
 
     function isSortedColumn(sc, d) {
       if (sc === d) {
@@ -101,7 +98,7 @@ var LineUp;
     allHeaders.exit().remove();
 
     // --- adding Element to class allHeaders
-    var allHeadersEnter = allHeaders.enter().append('g').attr('class', 'header')
+    var allHeadersEnter = allHeaders.enter().append('div').attr('class', 'header')
       .classed('emptyHeader', function (d) {
         return d instanceof LineUp.LayoutEmptyColumn || d instanceof LineUp.LayoutActionColumn;
       })
@@ -113,16 +110,22 @@ var LineUp;
       });
 
     // --- changing nodes for allHeaders
-    allHeaders.attr('transform', function (d) {
-      return 'translate(' + d.offsetX + ',' + d.offsetY + ')';
-    });
-
-
-    // -- handle BackgroundRectangles
-    allHeadersEnter.append('rect').attr({
-      'class': 'labelBG',
-      y: 0
-    }).style('fill', function (d) {
+    allHeaders.style({
+      position: "absolute",
+      "left": function(d) { return d.offsetX + 'px'; },
+      "top": function(d) { return d.offsetY + 'px'; },
+      width: function (d) {
+        // Uncharted (Dario): Added safety check to avoid negative values.
+        // Empty columns are as wide as their parent
+        if (d instanceof LineUp.LayoutEmptyColumn) {
+            d = d.parent;
+        }
+        return Math.max(d.getColumnWidth() - 5, 0) + "px";
+      },
+      height: function (d) {
+        return d.height + "px";
+      }
+    }).style('background-color', function (d) {
       if (d instanceof LineUp.LayoutEmptyColumn) {
         return 'lightgray';
       } else if (d.column && config.colorMapping.has(d.column.id)) {
@@ -157,54 +160,41 @@ var LineUp;
         }
         that.updateAll(false);
       });
-
-
-    allHeaders.select('.labelBG').attr({
-      width: function (d) {
-        // Uncharted (Dario): Added safety check to avoid negative values.
-        // Empty columns are as wide as their parent
-        if (d instanceof LineUp.LayoutEmptyColumn) {
-            d = d.parent;
-        }
-        return Math.max(d.getColumnWidth() - 5, 0);
-      },
-      height: function (d) {
-        return d.height;
-      }
-    });
-
-    allHeadersEnter.append('g').attr('class', 'hist');
+      
+    allHeadersEnter.append('div').attr('class', 'hist');
     var allNumberHeaders = allHeaders.filter(function (d) {
       return d instanceof LineUp.LayoutNumberColumn;
     });
     if (this.config.renderingOptions.histograms) {
-      allNumberHeaders.selectAll('g.hist').each(function (d) {
-        var $this = d3.select(this).attr('transform','scale(1,'+ (d.height)+')');
+      allNumberHeaders.selectAll('div.hist').each(function (d) {
+        var $this = d3.select(this);
         d.getHist(function(h) {
           if (!h) {
             return;
           }
           var s = d.value2pixel.copy().range([0, d.value2pixel.range()[1]-5]);
-          var $hist = $this.selectAll('rect').data(h);
-          $hist.enter().append('rect');
-          $hist.attr({
-            x : function(bin) {
-              return s(bin.x);
+          var $hist = $this.selectAll('div').data(h);
+          $hist.enter().append('div').attr({ "class": "hist-bar" });
+          $hist.style({
+            position: "absolute",
+            left : function(bin) {
+              return s(bin.x) + "px";
             },
             width: function(bin) {
-              return Math.max(s(bin.dx), 0);
+              return Math.max(s(bin.dx), 0) + "px";
             },
-            y: function(bin) {
-              return 1-bin.y;
-            },
+            // top: function(bin) {
+            //   return (1-bin.y) + "px";
+            // },
+            bottom: "0px",
             height: function(bin) {
-              return Math.max(bin.y, 0);
+              return (Math.max(bin.y, 0) * d.height) + "px";
             }
           });
         });
       });
     } else {
-      allNumberHeaders.selectAll('g.hist').selectAll('*').remove();
+      allNumberHeaders.selectAll('div.hist').selectAll('*').remove();
     }
 
     // -- handle WeightHandle
@@ -212,67 +202,70 @@ var LineUp;
     if (this.config.manipulative) {
       allHeadersEnter.filter(function (d) {
         return !(d instanceof LineUp.LayoutEmptyColumn) && !(d instanceof LineUp.LayoutActionColumn);
-      }).append('rect').attr({
-        'class': 'weightHandle',
-        x: function (d) {
+      }).append('div').attr({
+        'class': 'weightHandle'
+      }).style({
+        position: "absolute",
+        left: function (d) {
           // Uncharted (Dario): Added safety check to avoid negative values.
-          return Math.max(d.getColumnWidth() - 5, 0);
+          return Math.max(d.getColumnWidth() - 5, 0) + "px";
         },
-        y: 0,
-        width: 5
+        top: "0px",
+        width: "5px"
       });
 
-      allHeaders.select('.weightHandle').attr({
-        x: function (d) {
+      allHeaders.select('.weightHandle').style({
+        "box-sizing": "border-box",
+        border: "1px solid #bbb",
+        "background-color": "lightgray",
+        left: function (d) {
           // Uncharted (Dario): Added safety check to avoid negative values.
-          return Math.max(d.getColumnWidth() - 5, 0);
+          return Math.max(d.getColumnWidth() - 5, 0) + "px";
         },
         height: function (d) {
-          return d.height;
+          return d.height + "px";
         }
       }).call(this.dragWeight); // TODO: adopt dragWeight function !
     }
 
     // -- handle Text
-    allHeadersEnter.append('text').attr({
-      'class': 'headerLabel',
-      x: config.htmlLayout.labelLeftPadding
+    allHeadersEnter.append('div').attr({
+      'class': 'headerLabel'
+    }).style({
+      "overflow": "hidden",
+      "text-overflow": "ellipsis",
+      "white-space": "nowrap",
+      "margin-left": config.htmlLayout.labelLeftPadding + "px"
     });
-    allHeadersEnter.append('title');
     
     //Get and set the clip source to be used for rendering overlays. Scoping context to a related DOM element.
-    var clipSource = that.getClipSource.apply(this.$container[0][0]);
+    // var clipSource = that.getClipSource.apply(this.$container[0][0]);
     
     allHeaders.select('.headerLabel')
       .classed('sortedColumn', function (d) {
         var sc = config.columnBundles[d.columnBundle].sortedColumn;
         return isSortedColumn(sc, d);
       })
-      .attr({
-        y: function (d) {
+      .style({
+        "margin-top": function (d) {
           if (d instanceof LineUp.LayoutStackedColumn || d.parent != null) {
-            return d.height / 2;
+            return "calc(" + (d.height * 0.5) + "px - .5em)";
           }
-          return d.height * 3 / 4;
-        },
-        'clip-path': function (d) {
-          return 'url('+ (clipSource || '') +'#clip-H' + d.id + ')';
+          return "calc(" + (d.height * 0.75) + "px - .5em)";
         }
       }).text(function (d) {
         return d.getLabel();
       });
-    allHeaders.select('title').text(function (d) {
-      return d.getLabel();
-    });
-
 
     // -- handle the Sort Indicator
-    allHeadersEnter.append('text').attr({
-      'class': 'headerSort',
-      y: function (d) {
-        return d.height / 2;
+    allHeadersEnter.append('div').attr({
+      'class': 'headerSort'
+    }).style({
+      position: "absolute",
+      top: function (d) {
+        return "calc(" + (d.height / 2) + "px - .5em)";
       },
-      x: 2
+      left: "2px"
     });
 
     allHeaders.select('.headerSort').text(function (d) {
@@ -281,9 +274,9 @@ var LineUp;
         ((config.columnBundles[d.columnBundle].sortingOrderAsc) ? '\uf0de' : '\uf0dd')
         : '');
     })
-      .attr({
-        y: function (d) {
-          return d.height / 2;
+      .style({
+        top: function (d) {
+          return "calc(" + (d.height / 2) + "px - .5em)";
         }
       });
 
@@ -336,23 +329,29 @@ var LineUp;
       buttons.forEach(function (button) {
         var $button = allHeaders.selectAll('.' + button.class).data(button.filter);
         $button.exit().remove();
-        $button.enter().append('text')
+        $button.enter().append('div')
           .attr('class', function(d) {
             return 'fontawe ' + button.class + (d.isFiltered() ? ' filtered': '');
           })
           .text(button.text)
-          .on('click', button.action);
-        $button.attr({
-          x: function (d) {
-            return d.getColumnWidth() - config.htmlLayout.buttonRightPadding - (button.offset || 0);
-          },
-          'clip-path': function (d) {
-            return 'url('+ (clipSource || '') +'#clip-H' + d.id + ')';
-          },
+          .on('click', function() {
+            var args = Array.prototype.slice.call(arguments, 0);
+            button.action.apply(this, args);
+            d3.event.preventDefault();
+            d3.event.stopPropagation();
+          });
+        $button
+        .attr({
           'class': function(d) {
             return 'fontawe ' + button.class + (d.isFiltered() ? ' filtered': '');
+          }
+        })
+        .style({
+          left: function (d) {
+            return (d.getColumnWidth() - config.htmlLayout.buttonRightPadding - (button.offset || 0)) + "px";
           },
-          y: config.htmlLayout.buttonTopPadding
+          "position": "absolute",
+          top: config.htmlLayout.buttonTopPadding + "px"
         });
       });
     }
@@ -434,17 +433,17 @@ var LineUp;
     if (!this.config.renderingOptions.histograms) {
       return;
     }
-    var $hists = this.$header.selectAll('g.hist');
-    $hists.selectAll('rect').classed('hover',false);
+    var $hists = this.$header.selectAll('div.hist');
+    $hists.selectAll('.hist-bar').classed('hover',false);
     if (row) {
-      this.$header.selectAll('g.hist').each(function(d) {
+      this.$header.selectAll('div.hist').each(function(d) {
           if (d instanceof LineUp.LayoutNumberColumn) {
             var that = this;
             d.getHist(function (hist) {
               if (hist) {
                 d.binOf(row, function(bin) {
                   if (bin >= 0) {
-                    d3.select(that).select('rect:nth-child('+(bin+1)+')').classed('hover',true);
+                    d3.select(that).select('.hist-bar:nth-child('+(bin+1)+')').classed('hover',true);
                   }
                 });
               }
@@ -465,8 +464,8 @@ var LineUp;
 
     var x = d3.behavior.drag(),
       that = this,
-      rootsvg = this.$header,
-      svgOverlay = rootsvg.select('g.overlay'),
+      rootHeader = this.$header,
+      overlay = rootHeader.select('div.overlay'),
       hitted = null,
       moved = false;
     x.call(xss);
@@ -490,31 +489,34 @@ var LineUp;
       }
 
       moved = true;
-      var dragHeader = svgOverlay.selectAll('.dragHeader').data([d]);
-      var dragHeaderEnter = dragHeader.enter().append('g').attr({
-        class: 'dragHeader'
-      });
-
-      dragHeaderEnter.append('rect').attr({
-        class: 'labelBG',
-        width: function (d) {
-          // Empty columns are as wide as their parent
-          if (d instanceof LineUp.LayoutEmptyColumn) {
-              d = d.parent;
+      var dragHeader = overlay.selectAll('.dragHeader').data([d]);
+      var dragHeaderEnter = dragHeader.enter().append('div')
+        .attr({
+          class: 'dragHeader'
+        })
+        .style({
+          "background-color": "black",
+          "position": "absolute",
+          width: function (d) {
+            // Empty columns are as wide as their parent
+            if (d instanceof LineUp.LayoutEmptyColumn) {
+                d = d.parent;
+            }
+            return d.getColumnWidth() + "px";
+          },
+          height: function (d) {
+            return d.height + "px";
           }
-          return d.getColumnWidth();
-        },
-        height: function (d) {
-          return d.height;
-        }
-      });
+        });
+
+      dragHeaderEnter.append('div');
 
       var x = d3.event.x;
       var y = d3.event.y;
-      dragHeader.attr('transform', function () {
-        return 'translate(' + (d3.event.x + 3) + ',' + (d3.event.y - 10) + ')';
+      dragHeader.style({
+        left: (d3.event.x + 3) + 'px',
+        top:  (d3.event.y - 10) + 'px'
       });
-
 
       var allHeaderData = [];
       that.storage.getColumnLayout().forEach(function (d) {
@@ -545,22 +547,25 @@ var LineUp;
 
 //        console.log(hitted);
 
-      var columnTick = svgOverlay.selectAll('.columnTick').data(hitted ? [hitted] : []);
+      var columnTick = overlay.selectAll('.columnTick').data(hitted ? [hitted] : []);
       columnTick.exit().remove();
-      columnTick.enter().append('rect').attr({
-        class: 'columnTick',
-        width: 10
+      columnTick.enter().append('div').attr({
+        class: 'columnTick'
+      }).style({
+        position: "absolute",
+        width: "10px",
+        "background-color": "black"
       });
 
-      columnTick.attr({
-        x: function (d) {
-          return d.tickX - 5;
+      columnTick.style({
+        left: function (d) {
+          return (d.tickX - 5) + "px";
         },
-        y: function (d) {
-          return d.tickY;
+        top: function (d) {
+          return d.tickY + "px";
         },
         height: function (d) {
-          return d.tickH;
+          return d.tickH + "px";
         }
       });
     }
@@ -572,8 +577,8 @@ var LineUp;
       }
 
       d3.select(this).classed('dragObject', false);
-      svgOverlay.selectAll('.dragHeader').remove();
-      svgOverlay.selectAll('.columnTick').remove();
+      overlay.selectAll('.dragHeader').remove();
+      overlay.selectAll('.columnTick').remove();
 
       if (hitted && hitted.column === this.__data__) {
         return;

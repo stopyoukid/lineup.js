@@ -12,21 +12,22 @@
     dominant-baseline: middle;
     fill: black;
     pointer-events: none;
+    position: relative;
     /*stroke-size:.1;*/
     /*stroke:white;*/
 }
 
-.lu g.hist rect {
-    fill: black;
+.lu .hist .hist-bar {
+    background-color: black;
     opacity: 0.3;
 }
 
-.lu g.hist rect.hover {
-    fill: red;
+.lu .hist .hist-bar.hover {
+    background-color: red;
     opacity: 0.8;
 }
 
-.lu text.headerSort {
+.lu div.headerSort {
     font-family: 'FontAwesome';
     font-size: 10pt;
     fill: white;
@@ -38,9 +39,10 @@
     font-size: 9pt;
     dominant-baseline: middle;
     fill: darkgrey;
+    color: darkgrey;
 }
 
-.lu .tableData.action text {
+.lu .tableData.action div {
     font-family: 'FontAwesome';
     font-size: 10pt;
     font-weight: bold;
@@ -48,11 +50,13 @@
     text-anchor: middle;
     fill: grey;
     user-select: none;
+    color: grey;
 }
 
-.lu .tableData.action text:hover {
+.lu .tableData.action div:hover {
     cursor: pointer;
     fill: black;
+    color: black;
 }
 
 .lu .emptyHeader {
@@ -61,7 +65,6 @@
 
 .lu .sortedColumn {
     font-weight: bolder;
-    font-size: 11pt;
 }
 
 .lu .fa {
@@ -71,6 +74,7 @@
 
 .lu .addColumnButton rect {
     fill: white;
+    color: white;
     border-radius: 5px;
 }
 
@@ -90,6 +94,18 @@
     user-select: none;
 }
 
+.lu .addColumnButton div {
+    font-family: 'FontAwesome';
+    font-size: 10pt;
+    font-weight: bold;
+    fill: black;
+    color: black;
+    dominant-baseline: central;
+    text-anchor: middle;
+    pointer-events: none;
+    user-select: none;
+}
+
 .lu .fontawe {
     font-family: 'FontAwesome';
     font-size: 10pt;
@@ -99,35 +115,40 @@
 
 .lu .stackedColumnInfo, .singleColumnDelete, .singleColumnFilter {
     fill: lightgrey;
+    color: lightgray;
     cursor: pointer;
 }
 
 .lu .singleColumnFilter.filtered {
     fill: steelblue;
+    color: steelblue;
 }
 
 .lu .stackedColumnInfo:hover, .singleColumnDelete:hover, .singleColumnFilter:hover {
     fill: white;
+    color: white;
 }
 
 /* for gui helper */
-.lu .stackedOption rect {
+.lu .stackedOption div {
     fill: white;
+    color: white;
     opacity: .9;
 }
 
-.lu .stackedOption text {
+.lu .stackedOption div {
     font-family: 'FontAwesome';
     font-size: 9pt;
     dominant-baseline: central;
     font-weight: bold;
     fill: black;
+    color: black;
     cursor: pointer;
 
 }
 
-.lu .stackedOption text:hover {
-    fill: royalblue;
+.lu .stackedOption div:hover {
+    color: royalblue;
 }
 
 .lu .dragObject {
@@ -135,7 +156,7 @@
 }
 
 .lu .dragHeader {
-    fill: grey;
+    color: grey;
     opacity: .6;
 }
 
@@ -148,8 +169,13 @@
     cursor: pointer;
 }
 
-.lu .row.selected {
-    background-color: orange;
+.lu .row.selected:before {
+    content: " ";
+    border: 1px solid orange;
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
 }
 
 .lu .row .text {
@@ -179,19 +205,18 @@
 .lu .row rect.filler {
     fill: transparent;
 }
-.lu .row.hover text {
-    fill: black;
+.lu .row.hover div {
+    color: black;
     font-weight: bold;
 }
 .lu .row.selected rect.filler {
-    stroke: orange;
-    stroke-width: 1;
+    border: 1px solid orange;
 }
-.lu .row.values text {
-    fill: black;
+.lu .row.values div {
+    color: black;
 }
-.lu .row.hover rect.tableData, .lu .row.hover g.tableData rect,
-.lu .row.values rect.tableData, .lu .row.values g.tableData rect{
+.lu .row.hover rect.tableData, .lu .row.hover g.tableData div,
+.lu .row.values rect.tableData, .lu .row.values g.tableData div {
     opacity: 0.5;
 }
 .lu .row .hoveronly {
@@ -200,6 +225,13 @@
 }
 .lu .row .valueonly {
     user-select: none;
+    top: 50%;
+    margin-top: -4.5pt;
+    position: absolute;
+}
+
+.lu .row.values .hoveronly {
+    display: none;
 }
 
 .lugui-me line.axis, .lugui-me g.data line {
@@ -344,4 +376,9 @@
     height: calc(100% - 50px);
     overflow-x: visible;
     overflow-y: auto;
+}
+
+.lu .tableData.stacked {
+    top: 50%;
+    margin-top: -8px;
 }
