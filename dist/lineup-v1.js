@@ -62,7 +62,7 @@ var LineUp;
       $container.classed('lu-mode-separate', true);
       this.$table = $container;
       this.$headerContainer = this.$table.append('div').attr('class', 'lu lu-header');
-      this.$headerContainer.style({ 'height': this.config.htmlLayout.headerHeight + "px" });
+      this.$headerContainer.style({ 'height': this.config.htmlLayout.headerHeight + "px", "width": "100%" });
       this.$header = this.$headerContainer.append('div');
       
       this.$bodySVG = 
@@ -79,11 +79,15 @@ var LineUp;
     this.selectVisible = scroller.selectVisible;
     this.onScroll = scroller.onScroll;
 
-    this.$header.append('div').attr('class', 'main').style({
-      width: '100%',
+    this.$header.append('div').attr('class', 'header-background').style({
+      width: "100%",
       height: this.config.htmlLayout.headerHeight + "px",
       "background-color": 'lightgray'
-    });
+    }).text(" ");
+    this.$header.append('div').attr('class', 'main').style({
+      width: "100%",
+      height: this.config.htmlLayout.headerHeight + "px"
+    }).text(" ");
     this.$header.append('div').attr('class', 'overlay');
 
     this.headerUpdateRequired = true;
@@ -109,10 +113,12 @@ var LineUp;
   LineUp.prototype.scrolled = function (top, left) {
     if (this.config.svgLayout.mode === 'combined') {
       //in single svg mode propagate vertical shift
-      this.$header.attr('transform', 'translate(0,' + top + ')');
+      this.$header.style({ transform: 'translate(0px,' + top + 'px)' });
+      this.$header.selectAll('div.header-background').style({ transform: 'translate(0px,' + -top + 'px)' });    
     } else {
       //in two svg mode propagate horizontal shift
-      this.$header.attr('transform', 'translate('+-left+',0)');
+      this.$header.style({ 'transform': 'translate('+-left+'px,0px)' });
+      this.$header.selectAll('div.header-background').style({ transform: 'translate('+left+'px,0px)' });
     }
   };
 
@@ -3556,8 +3562,7 @@ var LineUp;
 
     if (this.headerUpdateRequired) {
       this.layoutHeaders(headers);
-      this.$headerContainer.attr('width', this.totalWidth);
-      this.$bodySVG.attr('width', this.totalWidth);
+      this.$bodySVG.style({ 'width': this.totalWidth + "px" });
       this.headerUpdateRequired = false;
     }
 
@@ -3996,11 +4001,13 @@ var LineUp;
 
       dragHeaderEnter.append('div');
 
-      var x = d3.event.x;
-      var y = d3.event.y;
+
+      var mouse = d3.mouse(rootHeader.node());
+      var x = mouse[0] || 0;
+      var y = mouse[1] || 0;
       dragHeader.style({
-        left: (d3.event.x + 3) + 'px',
-        top:  (d3.event.y - 10) + 'px'
+        left: (x + 3) + 'px',
+        top:  (y - 10) + 'px'
       });
 
       var allHeaderData = [];

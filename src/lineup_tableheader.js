@@ -71,8 +71,7 @@ var LineUp;
 
     if (this.headerUpdateRequired) {
       this.layoutHeaders(headers);
-      this.$headerContainer.attr('width', this.totalWidth);
-      this.$bodySVG.attr('width', this.totalWidth);
+      this.$bodySVG.style({ 'width': this.totalWidth + "px" });
       this.headerUpdateRequired = false;
     }
 
@@ -511,11 +510,13 @@ var LineUp;
 
       dragHeaderEnter.append('div');
 
-      var x = d3.event.x;
-      var y = d3.event.y;
+
+      var mouse = d3.mouse(rootHeader.node());
+      var x = mouse[0] || 0;
+      var y = mouse[1] || 0;
       dragHeader.style({
-        left: (d3.event.x + 3) + 'px',
-        top:  (d3.event.y - 10) + 'px'
+        left: (x + 3) + 'px',
+        top:  (y - 10) + 'px'
       });
 
       var allHeaderData = [];
