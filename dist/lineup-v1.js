@@ -1,4 +1,4 @@
-/*! lineup-v1 - v0.1.5 - 2016-09-16
+/*! lineup-v1 - v0.1.5 - 2016-10-10
 * https://github.com/stopyoukid/lineup.js
 * Copyright (c) 2016 ; Licensed BSD */
 (function() {
@@ -3034,29 +3034,25 @@ var LineUp;
         return data;
       });
     var height = config.svgLayout.rowHeight - config.svgLayout.rowBarPadding*2;
-    function styler (d) {
-      return [
-        "position:absolute",
-        "left:" + d.offsetX + "px",
-        "width:" + Math.max(+d.value - 2, 0) + "px",
-        "height:" + height + "px",
-        "margin-top: -" + (height / 2) + "px",
-        "background-color:" + config.colorMapping.get(d.key)
-      ].join(";");
-    }
+    var style = {
+      "position": "absolute",
+      "left": function(d) { return d.offsetX + "px"; },
+      "width": function(d) { return Math.max(+d.value - 2, 0) + "px"; },
+      "height": height + "px",
+      "margin-top": "-" + (height / 2) + "px",
+      "background-color": function(d) { return d3.rgb(config.colorMapping.get(d.key)); }
+    };
     
     barRows.enter()
       .append('div')
       .attr({
-        'class': 'tableData bar',
-        'style': styler
-      });
+        'class': 'tableData bar'
+      })
+      .style(style);
     barRows.exit().remove();
 
     barRows
-      .attr({
-        'style': styler
-      });
+      .style(style);
   }
 
   function updateStackBars(headers, allRows, _stackTransition, config, lineup) {
@@ -3109,22 +3105,23 @@ var LineUp;
       }
     );
 
-    function styler (d) {
-        var height = config.svgLayout.rowHeight - config.svgLayout.rowBarPadding*2 ;
-        return [
-          "position:absolute",
-          "height:" + height + "px",
-          "left:" + d.offsetX + "px",
-          "width:" + ((d.width > 2) ? d.width - 2 : d.width) + "px",
-          "background-color:" + config.colorMapping.get(d.child.getDataID())
-        ].join(";");
-    }
+    var height = config.svgLayout.rowHeight - config.svgLayout.rowBarPadding*2 ;
+    var barStyle = {
+        "position": "absolute",
+        "height": height + "px",
+        "left": function(d) { return d.offsetX + "px"; },
+        "width": function(d) { return ((d.width > 2) ? d.width - 2 : d.width) + "px"; },
+        "background-color":  function (d) {
+            return d3.rgb(config.colorMapping.get(d.child.getDataID()));
+        }
+    };
     
     allStack.exit().remove();
-    allStack.enter().append('div').attr('style', styler);
+    allStack.enter().append('div')
+        .style(barStyle);
 
     (_stackTransition ? allStack.transition(config.svgLayout.animationDuration) : allStack)
-      .attr("style", styler);
+      .style(barStyle);
   }
 
   function createActions($elem, item, config) {
