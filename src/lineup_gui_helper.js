@@ -89,7 +89,8 @@ var LineUp;
         return d.weight;
       },
       'disabled': true,
-      size: 5
+      size: 5,
+      maxlength: 5
     }).on("input", function (d) {
       d.weight = +this.value;
       redraw();
@@ -230,7 +231,8 @@ var LineUp;
         value: function (d) {
           return d.weight;
         },
-        size: 5
+        size: 5,
+        maxlength: 5
       }).on("input", function (d) {
         data[d.index].weight = +this.value;
         redraw();

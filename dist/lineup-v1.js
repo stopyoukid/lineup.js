@@ -1,4 +1,4 @@
-/*! lineup-v1 - v0.1.5 - 2016-10-10
+/*! lineup-v1 - v0.1.5 - 2016-10-11
 * https://github.com/stopyoukid/lineup.js
 * Copyright (c) 2016 ; Licensed BSD */
 (function() {
@@ -1331,7 +1331,8 @@ var LineUp;
         return d.weight;
       },
       'disabled': true,
-      size: 5
+      size: 5,
+      maxlength: 5
     }).on("input", function (d) {
       d.weight = +this.value;
       redraw();
@@ -1472,7 +1473,8 @@ var LineUp;
         value: function (d) {
           return d.weight;
         },
-        size: 5
+        size: 5,
+        maxlength: 5
       }).on("input", function (d) {
         data[d.index].weight = +this.value;
         redraw();
