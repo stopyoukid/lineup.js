@@ -3571,18 +3571,20 @@ var LineUp;
         that.addResortDragging(this, config);
       });
 
+    var handleWidth = config.htmlLayout.handleWidth;
     // --- changing nodes for allHeaders
     allHeaders.style({
       position: "absolute",
       "left": function(d) { return d.offsetX + 'px'; },
       "top": function(d) { return d.offsetY + 'px'; },
+      // "z-index": 1,
       width: function (d) {
         // Uncharted (Dario): Added safety check to avoid negative values.
         // Empty columns are as wide as their parent
         if (d instanceof LineUp.LayoutEmptyColumn) {
             d = d.parent;
         }
-        return Math.max(d.getColumnWidth() - 2, 0) + "px";
+        return Math.max(d.getColumnWidth() - (handleWidth / 2), 0) + "px";
       },
       height: function (d) {
         return d.height + "px";
@@ -3668,12 +3670,13 @@ var LineUp;
         'class': 'weightHandle'
       }).style({
         position: "absolute",
+        "z-index": 2,
         left: function (d) {
           // Uncharted (Dario): Added safety check to avoid negative values.
-          return Math.max(d.getColumnWidth() - 2, 0) + "px";
+          return Math.max(d.getColumnWidth() - (handleWidth / 2), 0) + "px";
         },
         top: "0px",
-        width: that.config.htmlLayout.handleWidth + "px"
+        width: handleWidth + "px"
       });
 
       allHeaders.select('.weightHandle').style({
@@ -3682,7 +3685,7 @@ var LineUp;
         "background-color": "lightgray",
         left: function (d) {
           // Uncharted (Dario): Added safety check to avoid negative values.
-          return Math.max(d.getColumnWidth() - 2, 0) + "px";
+          return Math.max(d.getColumnWidth() - (handleWidth / 2), 0) + "px";
         },
         height: function (d) {
           return d.height + "px";
@@ -3697,7 +3700,7 @@ var LineUp;
       "overflow": "hidden",
       "text-overflow": "ellipsis",
       "white-space": "nowrap",
-      "margin-left": config.htmlLayout.labelLeftPadding + "px"
+      "margin-left": (config.htmlLayout.labelLeftPadding  + (handleWidth / 2)) +  "px"
     });
 
     //Get and set the clip source to be used for rendering overlays. Scoping context to a related DOM element.
@@ -3727,7 +3730,7 @@ var LineUp;
       top: function (d) {
         return "calc(" + (d.height / 2) + "px - .5em)";
       },
-      left: "2px"
+      left: (handleWidth / 2) + "px"
     });
 
     allHeaders.select('.headerSort').text(function (d) {
@@ -3810,7 +3813,7 @@ var LineUp;
         })
         .style({
           left: function (d) {
-            return (d.getColumnWidth() - config.htmlLayout.buttonRightPadding - (button.offset || 0)) + "px";
+            return (d.getColumnWidth() - config.htmlLayout.buttonRightPadding - (button.offset || 0) - (handleWidth / 2)) + "px";
           },
           "position": "absolute",
           top: config.htmlLayout.buttonTopPadding + "px"
