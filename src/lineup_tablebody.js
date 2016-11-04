@@ -5,54 +5,22 @@
 var LineUp;
 (function (LineUp, d3, $, undefined) {
   LineUp.prototype = LineUp.prototype || {};
-  LineUp.updateClipPaths = function (headers, svg, prefix, shift, defclass) {
-    defclass = defclass || 'column';
-    //generate clip paths for the text columns to avoid text overflow
-    //see http://stackoverflow.com/questions/11742812/cannot-select-svg-foreignobject-element-in-d3
-    //there is a bug in webkit which present camelCase selectors
-    var textClipPath = svg.select('defs.' + defclass).selectAll(function () {
-      return this.getElementsByTagName('clipPath');
-    }).data(headers, function (d) {
-      return d.id;
-    });
-    textClipPath.enter().append('clipPath')
-      .attr('id', function (d) {
-        return 'clip-' + prefix + d.id;
-      })
-      .append('rect').attr({
-        y: 0,
-        height: '1000'
-      });
-    textClipPath.exit().remove();
-    textClipPath.select('rect')
-      .attr({
-        x: function (d) {
-          return shift ? d.offsetX : null;
-        },
-        width: function (d) {
-          // Empty columns are as wide as their parent
-          if (d instanceof LineUp.LayoutEmptyColumn) {
-              d = d.parent;
-          }
-          return Math.max(d.getColumnWidth() - 5, 0);
-        }
-      });
-  };
-  function updateText(allHeaders, allRows) {
+  function updateText(allHeaders, allRows, config) {
     // -- the text columns
 
     var allTextHeaders = allHeaders.filter(function (d) {
       return d instanceof LineUp.LayoutCategoricalColumn || d instanceof LineUp.LayoutStringColumn|| d instanceof LineUp.LayoutRankColumn;
     });
 
+    var colPadding = config.svgLayout.columnPadding;
     var textRows = allRows.selectAll('.tableData.text')
       .data(function (d) {
         var dd = allTextHeaders.map(function (column) {
           return {
             value: column.getValue(d),
             label: column.getValue(d, 'raw'),
-            offsetX: column.offsetX + 5,
-            width: Math.max(column.getColumnWidth() - 5, 0),
+            offsetX: column.offsetX + (colPadding / 2),
+            width: Math.max(column.getColumnWidth() - colPadding, 0),
             isRank: (column instanceof LineUp.LayoutRankColumn)
           };
         }).filter(function(d) {
@@ -60,14 +28,15 @@ var LineUp;
         });
         return dd;
       });
-      
+
     function styler (d) {
       return [
         "left:" + d.offsetX + "px",
-        "width:" + d.width + "px"
+        "width:" + d.width + "px",
+        "line-height:" + config.svgLayout.rowHeight + "px"
       ].join(";");
     }
-    
+
     textRows.enter()
       .append('div')
       .attr({
@@ -176,16 +145,17 @@ var LineUp;
         });
         return data;
       });
+    var colPadding = config.svgLayout.columnPadding;
     var height = config.svgLayout.rowHeight - config.svgLayout.rowBarPadding*2;
     var style = {
       "position": "absolute",
-      "left": function(d) { return d.offsetX + "px"; },
-      "width": function(d) { return Math.max(+d.value - 2, 0) + "px"; },
+      "left": function(d) { return d.offsetX + (colPadding / 2) + "px"; },
+      "width": function(d) { return Math.max(+d.value - colPadding, 0) + "px"; },
       "height": height + "px",
-      "margin-top": "-" + (height / 2) + "px",
+      "margin-top": config.svgLayout.rowBarPadding + "px",
       "background-color": function(d) { return d3.rgb(config.colorMapping.get(d.key)); }
     };
-    
+
     barRows.enter()
       .append('div')
       .attr({
@@ -258,7 +228,7 @@ var LineUp;
             return d3.rgb(config.colorMapping.get(d.child.getDataID()));
         }
     };
-    
+
     allStack.exit().remove();
     allStack.enter().append('div')
         .style(barStyle);
@@ -384,10 +354,10 @@ var LineUp;
     var rowScale = d3.scale.ordinal()
         .domain(data.map(function (d) {
           var value = d[primaryKey];
-          
+
           return (value === null || typeof value === 'undefined') ? '' : value;
         }))
-        .rangeBands([0, (datLength * that.config.svgLayout.rowHeight)], 0, that.config.svgLayout.rowPadding),
+        .rangeBands([0, (datLength * (that.config.svgLayout.rowHeight + 2))], 0, 0),
       prevRowScale = bundle.prevRowScale || rowScale;
     //backup the rowscale from the previous call to have a previous 'old' position
     bundle.prevRowScale = rowScale;
@@ -396,7 +366,7 @@ var LineUp;
     if (that.config.svgLayout.mode === 'combined') {
       headerShift = that.config.htmlLayout.headerHeight;
     }
-    
+
     this.$spacer
       .attr('style', 'position:absolute;top:0px;height:' + (datLength * that.config.svgLayout.rowHeight + headerShift) + "px")
       .html("&nbsp;");
@@ -411,13 +381,14 @@ var LineUp;
       return d[primaryKey];
     });
     allRowsSuper.exit().remove();
-    
+
     function rowStyler() {
       return [
-        "height:" + that.config.svgLayout.rowHeight + "px"
+        "height:" + that.config.svgLayout.rowHeight + "px",
+        "margin-top:" + that.config.svgLayout.rowPadding + "px"
       ].join(";") + ";";
     }
- 
+
     // --- append ---
     allRowsSuper.enter().append('div')
       .attr({
@@ -493,7 +464,7 @@ var LineUp;
           "width:" + Math.max(+d.w - 7, 0) + "px"
         ].join(";");
       }
-    
+
       var tmp = overlays.data(textOverlays);
       tmp.enter().append('div').
         attr({
@@ -502,13 +473,13 @@ var LineUp;
         }).text(function (d) {
           return d.label;
         });
-        
+
       tmp.exit().remove();
 
       // update x on update
       overlays
         .attr('style', styler)
-        .text(function(d) { 
+        .text(function(d) {
           return d.label;
         });
     }
@@ -614,7 +585,7 @@ var LineUp;
     updateActionBars(headers, allRows, that.config);
 
     //Get and set the clip source to be used for rendering overlays. Scoping context to a related DOM element.
-    updateText(allHeaders, allRows);
+    updateText(allHeaders, allRows, that.config);
     updateCategorical(allHeaders, allRows, svg, that.config);
     if (that.config.renderingOptions.values) {
       allRowsSuper.classed('values', true);

@@ -1,4 +1,4 @@
-/*! lineup-v1 - v0.1.5 - 2016-10-11
+/*! lineup-v1 - v0.1.5 - 2016-11-04
 * https://github.com/stopyoukid/lineup.js
 * Copyright (c) 2016 ; Licensed BSD */
 (function() {
@@ -20,10 +20,10 @@ var LineUp;
 //    this.sortedColumn = [];
     this.$container = $container;
     this.tooltip = LineUp.createTooltip($container.node());
-    
+
     // Hide default tooltip to avoid undesired artifacts.
     this.tooltip.hide();
-    
+
     //trigger hover event
     this.listeners = d3.dispatch('hover','change-sortcriteria','change-filter', 'columns-changed', 'selected','multiselected', 'generate-histogram');
 
@@ -42,7 +42,7 @@ var LineUp;
     }
 
 
-    
+
     //create basic structure
     if (this.config.svgLayout.mode === 'combined') {
       //within a single svg with 'fixed' header
@@ -64,8 +64,8 @@ var LineUp;
       this.$headerContainer = this.$table.append('div').attr('class', 'lu lu-header');
       this.$headerContainer.style({ 'height': this.config.htmlLayout.headerHeight + "px", "width": "100%" });
       this.$header = this.$headerContainer.append('div');
-      
-      this.$bodySVG = 
+
+      this.$bodySVG =
         this.$table.append('div')
           .attr('class','lu-wrapper')
             .append('div')
@@ -114,7 +114,7 @@ var LineUp;
     if (this.config.svgLayout.mode === 'combined') {
       //in single svg mode propagate vertical shift
       this.$header.style({ transform: 'translate(0px,' + top + 'px)' });
-      this.$header.selectAll('div.header-background').style({ transform: 'translate(0px,' + -top + 'px)' });    
+      this.$header.selectAll('div.header-background').style({ transform: 'translate(0px,' + -top + 'px)' });
     } else {
       //in two svg mode propagate horizontal shift
       this.$header.style({ 'transform': 'translate('+-left+'px,0px)' });
@@ -133,11 +133,12 @@ var LineUp;
     numberformat: d3.format('.3n'),
     htmlLayout: {
       headerHeight: 50,
-      headerOffset: 2,
+      headerOffset: 0,
       buttonTopPadding: 3,
       labelLeftPadding: 12,
       buttonRightPadding: 18,
-      buttonWidth: 13
+      buttonWidth: 13,
+      handleWidth: 4
     },
     renderingOptions: {
       stacked: false,
@@ -151,8 +152,9 @@ var LineUp;
        */
       mode: 'combined', //modes: combined vs separate
       rowHeight: 20,
-      rowPadding : 0.2, //padding for scale.rangeBands
-      rowBarPadding: 2,
+      rowPadding : 2,
+      columnPadding: 2,
+      rowBarPadding: 0,
       /**
        * number of backup rows to keep to avoid updating on every small scroll thing
        */
@@ -209,7 +211,7 @@ var LineUp;
     delete this.prevRowScale;
     this.startVis();
   };
-  
+
        /**
      * change a rendering option
     * @param option
@@ -363,7 +365,7 @@ var LineUp;
     //trigger resort
     if (column === this.config.columnBundles[bundle].sortedColumn) {
       this.listeners['change-sortcriteria'](this, column, this.config.columnBundles[bundle]);
-    
+
       if (!this.config.sorting || !this.config.sorting.external) {
         this.storage.resortData({ key: bundle });
       }
@@ -383,7 +385,7 @@ var LineUp;
     }
     column.filter = filter;
     this.listeners['change-filter'](this, column);
-    
+
     if (!this.config.filtering || !this.config.filtering.external) {
       this.storage.resortData({filteredChanged: true});
     }
@@ -2864,54 +2866,22 @@ var LineUp;
 var LineUp;
 (function (LineUp, d3, $, undefined) {
   LineUp.prototype = LineUp.prototype || {};
-  LineUp.updateClipPaths = function (headers, svg, prefix, shift, defclass) {
-    defclass = defclass || 'column';
-    //generate clip paths for the text columns to avoid text overflow
-    //see http://stackoverflow.com/questions/11742812/cannot-select-svg-foreignobject-element-in-d3
-    //there is a bug in webkit which present camelCase selectors
-    var textClipPath = svg.select('defs.' + defclass).selectAll(function () {
-      return this.getElementsByTagName('clipPath');
-    }).data(headers, function (d) {
-      return d.id;
-    });
-    textClipPath.enter().append('clipPath')
-      .attr('id', function (d) {
-        return 'clip-' + prefix + d.id;
-      })
-      .append('rect').attr({
-        y: 0,
-        height: '1000'
-      });
-    textClipPath.exit().remove();
-    textClipPath.select('rect')
-      .attr({
-        x: function (d) {
-          return shift ? d.offsetX : null;
-        },
-        width: function (d) {
-          // Empty columns are as wide as their parent
-          if (d instanceof LineUp.LayoutEmptyColumn) {
-              d = d.parent;
-          }
-          return Math.max(d.getColumnWidth() - 5, 0);
-        }
-      });
-  };
-  function updateText(allHeaders, allRows) {
+  function updateText(allHeaders, allRows, config) {
     // -- the text columns
 
     var allTextHeaders = allHeaders.filter(function (d) {
       return d instanceof LineUp.LayoutCategoricalColumn || d instanceof LineUp.LayoutStringColumn|| d instanceof LineUp.LayoutRankColumn;
     });
 
+    var colPadding = config.svgLayout.columnPadding;
     var textRows = allRows.selectAll('.tableData.text')
       .data(function (d) {
         var dd = allTextHeaders.map(function (column) {
           return {
             value: column.getValue(d),
             label: column.getValue(d, 'raw'),
-            offsetX: column.offsetX + 5,
-            width: Math.max(column.getColumnWidth() - 5, 0),
+            offsetX: column.offsetX + (colPadding / 2),
+            width: Math.max(column.getColumnWidth() - colPadding, 0),
             isRank: (column instanceof LineUp.LayoutRankColumn)
           };
         }).filter(function(d) {
@@ -2919,14 +2889,15 @@ var LineUp;
         });
         return dd;
       });
-      
+
     function styler (d) {
       return [
         "left:" + d.offsetX + "px",
-        "width:" + d.width + "px"
+        "width:" + d.width + "px",
+        "line-height:" + config.svgLayout.rowHeight + "px"
       ].join(";");
     }
-    
+
     textRows.enter()
       .append('div')
       .attr({
@@ -3035,16 +3006,17 @@ var LineUp;
         });
         return data;
       });
+    var colPadding = config.svgLayout.columnPadding;
     var height = config.svgLayout.rowHeight - config.svgLayout.rowBarPadding*2;
     var style = {
       "position": "absolute",
-      "left": function(d) { return d.offsetX + "px"; },
-      "width": function(d) { return Math.max(+d.value - 2, 0) + "px"; },
+      "left": function(d) { return d.offsetX + (colPadding / 2) + "px"; },
+      "width": function(d) { return Math.max(+d.value - colPadding, 0) + "px"; },
       "height": height + "px",
-      "margin-top": "-" + (height / 2) + "px",
+      "margin-top": config.svgLayout.rowBarPadding + "px",
       "background-color": function(d) { return d3.rgb(config.colorMapping.get(d.key)); }
     };
-    
+
     barRows.enter()
       .append('div')
       .attr({
@@ -3117,7 +3089,7 @@ var LineUp;
             return d3.rgb(config.colorMapping.get(d.child.getDataID()));
         }
     };
-    
+
     allStack.exit().remove();
     allStack.enter().append('div')
         .style(barStyle);
@@ -3243,10 +3215,10 @@ var LineUp;
     var rowScale = d3.scale.ordinal()
         .domain(data.map(function (d) {
           var value = d[primaryKey];
-          
+
           return (value === null || typeof value === 'undefined') ? '' : value;
         }))
-        .rangeBands([0, (datLength * that.config.svgLayout.rowHeight)], 0, that.config.svgLayout.rowPadding),
+        .rangeBands([0, (datLength * (that.config.svgLayout.rowHeight + 2))], 0, 0),
       prevRowScale = bundle.prevRowScale || rowScale;
     //backup the rowscale from the previous call to have a previous 'old' position
     bundle.prevRowScale = rowScale;
@@ -3255,7 +3227,7 @@ var LineUp;
     if (that.config.svgLayout.mode === 'combined') {
       headerShift = that.config.htmlLayout.headerHeight;
     }
-    
+
     this.$spacer
       .attr('style', 'position:absolute;top:0px;height:' + (datLength * that.config.svgLayout.rowHeight + headerShift) + "px")
       .html("&nbsp;");
@@ -3270,13 +3242,14 @@ var LineUp;
       return d[primaryKey];
     });
     allRowsSuper.exit().remove();
-    
+
     function rowStyler() {
       return [
-        "height:" + that.config.svgLayout.rowHeight + "px"
+        "height:" + that.config.svgLayout.rowHeight + "px",
+        "margin-top:" + that.config.svgLayout.rowPadding + "px"
       ].join(";") + ";";
     }
- 
+
     // --- append ---
     allRowsSuper.enter().append('div')
       .attr({
@@ -3352,7 +3325,7 @@ var LineUp;
           "width:" + Math.max(+d.w - 7, 0) + "px"
         ].join(";");
       }
-    
+
       var tmp = overlays.data(textOverlays);
       tmp.enter().append('div').
         attr({
@@ -3361,13 +3334,13 @@ var LineUp;
         }).text(function (d) {
           return d.label;
         });
-        
+
       tmp.exit().remove();
 
       // update x on update
       overlays
         .attr('style', styler)
-        .text(function(d) { 
+        .text(function(d) {
           return d.label;
         });
     }
@@ -3473,7 +3446,7 @@ var LineUp;
     updateActionBars(headers, allRows, that.config);
 
     //Get and set the clip source to be used for rendering overlays. Scoping context to a related DOM element.
-    updateText(allHeaders, allRows);
+    updateText(allHeaders, allRows, that.config);
     updateCategorical(allHeaders, allRows, svg, that.config);
     if (that.config.renderingOptions.values) {
       allRowsSuper.classed('values', true);
@@ -3576,9 +3549,9 @@ var LineUp;
       if (sc === d) {
         return true;
       }
-      return sc && d && sc.column && d.column && sc.column.column === d.column.column;    
+      return sc && d && sc.column && d.column && sc.column.column === d.column.column;
     }
-    
+
     // -- Handle the header groups (exit,enter, update)
 
     var allHeaders = svg.selectAll('.header').data(allHeaderData, function (d) {
@@ -3609,7 +3582,7 @@ var LineUp;
         if (d instanceof LineUp.LayoutEmptyColumn) {
             d = d.parent;
         }
-        return Math.max(d.getColumnWidth() - 5, 0) + "px";
+        return Math.max(d.getColumnWidth() - 2, 0) + "px";
       },
       height: function (d) {
         return d.height + "px";
@@ -3649,7 +3622,7 @@ var LineUp;
         }
         that.updateAll(false);
       });
-      
+
     allHeadersEnter.append('div').attr('class', 'hist');
     var allNumberHeaders = allHeaders.filter(function (d) {
       return d instanceof LineUp.LayoutNumberColumn;
@@ -3697,10 +3670,10 @@ var LineUp;
         position: "absolute",
         left: function (d) {
           // Uncharted (Dario): Added safety check to avoid negative values.
-          return Math.max(d.getColumnWidth() - 5, 0) + "px";
+          return Math.max(d.getColumnWidth() - 2, 0) + "px";
         },
         top: "0px",
-        width: "5px"
+        width: that.config.htmlLayout.handleWidth + "px"
       });
 
       allHeaders.select('.weightHandle').style({
@@ -3709,7 +3682,7 @@ var LineUp;
         "background-color": "lightgray",
         left: function (d) {
           // Uncharted (Dario): Added safety check to avoid negative values.
-          return Math.max(d.getColumnWidth() - 5, 0) + "px";
+          return Math.max(d.getColumnWidth() - 2, 0) + "px";
         },
         height: function (d) {
           return d.height + "px";
@@ -3726,10 +3699,10 @@ var LineUp;
       "white-space": "nowrap",
       "margin-left": config.htmlLayout.labelLeftPadding + "px"
     });
-    
+
     //Get and set the clip source to be used for rendering overlays. Scoping context to a related DOM element.
     // var clipSource = that.getClipSource.apply(this.$container[0][0]);
-    
+
     allHeaders.select('.headerLabel')
       .classed('sortedColumn', function (d) {
         var sc = config.columnBundles[d.columnBundle].sortedColumn;
@@ -3867,7 +3840,7 @@ var LineUp;
     });
 
     addColumnButtonEnter.append("title").text(function(d) { return d.title; });
-    
+
     addColumnButtonEnter
     .filter(function(d) { return !d.render; })
     .append('rect').attr({
@@ -3889,7 +3862,7 @@ var LineUp;
         that[d.action](d);
       }
     });
-    
+
      addColumnButtonEnter
     .filter(function(d) { return !d.render; })
     .append('text').attr({
@@ -4082,7 +4055,7 @@ var LineUp;
         } else {
           that.storage.moveColumn(this.__data__, hitted.column, hitted.insert);
         }
-        
+
         that.listeners['columns-changed'](that);
 //            that.layoutHeaders(that.storage.getColumnLayout());
         that.headerUpdateRequired = true;
@@ -4093,9 +4066,9 @@ var LineUp;
       if (hitted == null && moved) {
         that.headerUpdateRequired = true;
         that.storage.removeColumn(this.__data__);
-        
+
         that.listeners['columns-changed'](that);
-        
+
         that.updateAll();
       }
     }
@@ -4110,9 +4083,9 @@ var LineUp;
   LineUp.prototype.addNewEmptyStackedColumn = function () {
     this.storage.addStackedColumn(null, -1);
     this.headerUpdateRequired = true;
-        
+
     this.listeners['columns-changed'](this);
-    
+
     this.updateAll();
   };
 

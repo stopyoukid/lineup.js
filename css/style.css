@@ -184,8 +184,8 @@
     overflow:hidden;
     white-space:nowrap;
     text-overflow:ellipsis;
-    top: 50%;
-    margin-top: -.5em;
+    box-sizing: border-box;
+    padding-left: 2px;
 }
 
 .lu .row .hoveronly {
@@ -196,10 +196,6 @@
     text-overflow:ellipsis;
     top: 50%;
     margin-top: -.5em;
-}
-
-.lu .row .bar {
-    top: 50%;
 }
 
 .lu .row rect.filler {
@@ -376,9 +372,4 @@
     height: calc(100% - 50px);
     overflow-x: visible;
     overflow-y: auto;
-}
-
-.lu .tableData.stacked {
-    top: 50%;
-    margin-top: -8px;
 }

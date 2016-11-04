@@ -86,9 +86,9 @@ var LineUp;
       if (sc === d) {
         return true;
       }
-      return sc && d && sc.column && d.column && sc.column.column === d.column.column;    
+      return sc && d && sc.column && d.column && sc.column.column === d.column.column;
     }
-    
+
     // -- Handle the header groups (exit,enter, update)
 
     var allHeaders = svg.selectAll('.header').data(allHeaderData, function (d) {
@@ -119,7 +119,7 @@ var LineUp;
         if (d instanceof LineUp.LayoutEmptyColumn) {
             d = d.parent;
         }
-        return Math.max(d.getColumnWidth() - 5, 0) + "px";
+        return Math.max(d.getColumnWidth() - 2, 0) + "px";
       },
       height: function (d) {
         return d.height + "px";
@@ -159,7 +159,7 @@ var LineUp;
         }
         that.updateAll(false);
       });
-      
+
     allHeadersEnter.append('div').attr('class', 'hist');
     var allNumberHeaders = allHeaders.filter(function (d) {
       return d instanceof LineUp.LayoutNumberColumn;
@@ -207,10 +207,10 @@ var LineUp;
         position: "absolute",
         left: function (d) {
           // Uncharted (Dario): Added safety check to avoid negative values.
-          return Math.max(d.getColumnWidth() - 5, 0) + "px";
+          return Math.max(d.getColumnWidth() - 2, 0) + "px";
         },
         top: "0px",
-        width: "5px"
+        width: that.config.htmlLayout.handleWidth + "px"
       });
 
       allHeaders.select('.weightHandle').style({
@@ -219,7 +219,7 @@ var LineUp;
         "background-color": "lightgray",
         left: function (d) {
           // Uncharted (Dario): Added safety check to avoid negative values.
-          return Math.max(d.getColumnWidth() - 5, 0) + "px";
+          return Math.max(d.getColumnWidth() - 2, 0) + "px";
         },
         height: function (d) {
           return d.height + "px";
@@ -236,10 +236,10 @@ var LineUp;
       "white-space": "nowrap",
       "margin-left": config.htmlLayout.labelLeftPadding + "px"
     });
-    
+
     //Get and set the clip source to be used for rendering overlays. Scoping context to a related DOM element.
     // var clipSource = that.getClipSource.apply(this.$container[0][0]);
-    
+
     allHeaders.select('.headerLabel')
       .classed('sortedColumn', function (d) {
         var sc = config.columnBundles[d.columnBundle].sortedColumn;
@@ -377,7 +377,7 @@ var LineUp;
     });
 
     addColumnButtonEnter.append("title").text(function(d) { return d.title; });
-    
+
     addColumnButtonEnter
     .filter(function(d) { return !d.render; })
     .append('rect').attr({
@@ -399,7 +399,7 @@ var LineUp;
         that[d.action](d);
       }
     });
-    
+
      addColumnButtonEnter
     .filter(function(d) { return !d.render; })
     .append('text').attr({
@@ -592,7 +592,7 @@ var LineUp;
         } else {
           that.storage.moveColumn(this.__data__, hitted.column, hitted.insert);
         }
-        
+
         that.listeners['columns-changed'](that);
 //            that.layoutHeaders(that.storage.getColumnLayout());
         that.headerUpdateRequired = true;
@@ -603,9 +603,9 @@ var LineUp;
       if (hitted == null && moved) {
         that.headerUpdateRequired = true;
         that.storage.removeColumn(this.__data__);
-        
+
         that.listeners['columns-changed'](that);
-        
+
         that.updateAll();
       }
     }
@@ -620,9 +620,9 @@ var LineUp;
   LineUp.prototype.addNewEmptyStackedColumn = function () {
     this.storage.addStackedColumn(null, -1);
     this.headerUpdateRequired = true;
-        
+
     this.listeners['columns-changed'](this);
-    
+
     this.updateAll();
   };
 

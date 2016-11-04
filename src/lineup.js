@@ -15,10 +15,10 @@ var LineUp;
 //    this.sortedColumn = [];
     this.$container = $container;
     this.tooltip = LineUp.createTooltip($container.node());
-    
+
     // Hide default tooltip to avoid undesired artifacts.
     this.tooltip.hide();
-    
+
     //trigger hover event
     this.listeners = d3.dispatch('hover','change-sortcriteria','change-filter', 'columns-changed', 'selected','multiselected', 'generate-histogram');
 
@@ -37,7 +37,7 @@ var LineUp;
     }
 
 
-    
+
     //create basic structure
     if (this.config.svgLayout.mode === 'combined') {
       //within a single svg with 'fixed' header
@@ -59,8 +59,8 @@ var LineUp;
       this.$headerContainer = this.$table.append('div').attr('class', 'lu lu-header');
       this.$headerContainer.style({ 'height': this.config.htmlLayout.headerHeight + "px", "width": "100%" });
       this.$header = this.$headerContainer.append('div');
-      
-      this.$bodySVG = 
+
+      this.$bodySVG =
         this.$table.append('div')
           .attr('class','lu-wrapper')
             .append('div')
@@ -109,7 +109,7 @@ var LineUp;
     if (this.config.svgLayout.mode === 'combined') {
       //in single svg mode propagate vertical shift
       this.$header.style({ transform: 'translate(0px,' + top + 'px)' });
-      this.$header.selectAll('div.header-background').style({ transform: 'translate(0px,' + -top + 'px)' });    
+      this.$header.selectAll('div.header-background').style({ transform: 'translate(0px,' + -top + 'px)' });
     } else {
       //in two svg mode propagate horizontal shift
       this.$header.style({ 'transform': 'translate('+-left+'px,0px)' });
@@ -128,11 +128,12 @@ var LineUp;
     numberformat: d3.format('.3n'),
     htmlLayout: {
       headerHeight: 50,
-      headerOffset: 2,
+      headerOffset: 0,
       buttonTopPadding: 3,
       labelLeftPadding: 12,
       buttonRightPadding: 18,
-      buttonWidth: 13
+      buttonWidth: 13,
+      handleWidth: 4
     },
     renderingOptions: {
       stacked: false,
@@ -146,8 +147,9 @@ var LineUp;
        */
       mode: 'combined', //modes: combined vs separate
       rowHeight: 20,
-      rowPadding : 0.2, //padding for scale.rangeBands
-      rowBarPadding: 2,
+      rowPadding : 2,
+      columnPadding: 2,
+      rowBarPadding: 0,
       /**
        * number of backup rows to keep to avoid updating on every small scroll thing
        */
@@ -204,7 +206,7 @@ var LineUp;
     delete this.prevRowScale;
     this.startVis();
   };
-  
+
        /**
      * change a rendering option
     * @param option
@@ -358,7 +360,7 @@ var LineUp;
     //trigger resort
     if (column === this.config.columnBundles[bundle].sortedColumn) {
       this.listeners['change-sortcriteria'](this, column, this.config.columnBundles[bundle]);
-    
+
       if (!this.config.sorting || !this.config.sorting.external) {
         this.storage.resortData({ key: bundle });
       }
@@ -378,7 +380,7 @@ var LineUp;
     }
     column.filter = filter;
     this.listeners['change-filter'](this, column);
-    
+
     if (!this.config.filtering || !this.config.filtering.external) {
       this.storage.resortData({filteredChanged: true});
     }
