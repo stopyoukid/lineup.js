@@ -126,6 +126,7 @@ var LineUp;
     columnColors: d3.scale.category20(),
     grayColor: '#999999',
     numberformat: d3.format('.3n'),
+    cellFormatter: undefined,
     htmlLayout: {
       headerHeight: 50,
       headerOffset: 0,

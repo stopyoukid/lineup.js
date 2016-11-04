@@ -21,7 +21,9 @@ var LineUp;
             label: column.getValue(d, 'raw'),
             offsetX: column.offsetX + (colPadding / 2),
             width: Math.max(column.getColumnWidth() - colPadding, 0),
-            isRank: (column instanceof LineUp.LayoutRankColumn)
+            isRank: (column instanceof LineUp.LayoutRankColumn),
+            column: column,
+            row: d
           };
         }).filter(function(d) {
           return !!d.label;
@@ -37,7 +39,7 @@ var LineUp;
       ].join(";");
     }
 
-    textRows.enter()
+    var tre = textRows.enter()
       .append('div')
       .attr({
         'class': function (d) {
@@ -52,6 +54,11 @@ var LineUp;
       .text(function (d) {
         return d.label;
       });
+
+    if (config.cellFormatter) {
+        tre.call(config.cellFormatter);
+        textRows.call(config.cellFormatter);
+    }
 
     allRows.selectAll('.tableData.text.rank').text(function (d) {
       return d.label;
@@ -218,12 +225,13 @@ var LineUp;
       }
     );
 
+    var colPadding = config.svgLayout.columnPadding;
     var height = config.svgLayout.rowHeight - config.svgLayout.rowBarPadding*2 ;
     var barStyle = {
         "position": "absolute",
         "height": height + "px",
-        "left": function(d) { return d.offsetX + "px"; },
-        "width": function(d) { return ((d.width > 2) ? d.width - 2 : d.width) + "px"; },
+        "left": function(d) { return d.offsetX + (colPadding / 2) + "px"; },
+        "width": function(d) { return Math.max(((d.width > colPadding) ? d.width - colPadding : d.width), 0) + "px"; },
         "background-color":  function (d) {
             return d3.rgb(config.colorMapping.get(d.child.getDataID()));
         }

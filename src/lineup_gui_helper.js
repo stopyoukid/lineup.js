@@ -24,7 +24,7 @@ var LineUp;
     var popupBG = container.append('div')
         // var popupBG = d3.select("body").append("div")
       .attr("class", "lu-popupBG");
-      
+
     var popup = container.append('div')
       .attr({
         "class": "lu-popup"
@@ -114,7 +114,7 @@ var LineUp;
     }
 
     redraw();
-    
+
     function getElementById(id) {
       return $(that.$container.node()).find("#" + id)[0];
     }
@@ -201,7 +201,7 @@ var LineUp;
       });
 
       popup.remove();
-      
+
       if (allChecked.length) {
         that.listeners['columns-changed'](that);
       }
@@ -368,17 +368,17 @@ var LineUp;
         if (a && b) {
           var firstEqual = a[0] === b[0];
           var secondEqual = a[1] === b[1];
-          
+
           // If they are both NaN, then they are equal
           if (!firstEqual && isNaN(a[0]) && isNaN(b[0])) {
             firstEqual = true;
           }
-          
+
           // If they are both NaN, then they are equal
           if (!secondEqual && isNaN(a[1]) && isNaN(b[1])) {
             secondEqual = true;
           }
-          return firstEqual && secondEqual;     
+          return firstEqual && secondEqual;
         }
         return a === b;
     }
@@ -424,9 +424,9 @@ var LineUp;
 
     function removeStackedColumn(col) {
       that.storage.removeColumn(col);
-      
+
       that.listeners['columns-changed'](that);
-      
+
       that.headerUpdateRequired = true;
       that.updateAll();
     }
@@ -439,7 +439,7 @@ var LineUp;
       var popupBG = this.$container.append('div')
         // var popupBG = d3.select("body").append("div")
         .attr("class", "lu-popupBG");
-        
+
         // ATS: Was d3.select('body').appe...
       var popup = this.$container.append('div')
         .attr({
@@ -457,7 +457,7 @@ var LineUp;
           '<button class="cancel"><i class="fa fa-times"></i> cancel</button>' +
           '<button class="ok"><i class="fa fa-check"></i> ok</button>'
       );
-      
+
       function getElementById(id) {
         return $(that.$container.node()).find("#" + id)[0];
       }
@@ -696,7 +696,7 @@ var LineUp;
         that.updateBody();
       }
     }
-    
+
     function getElementById(id) {
       return $(that.$container.node()).find("#" + id)[0];
     }
@@ -771,7 +771,7 @@ var LineUp;
   LineUp.prototype.initScrolling = function ($container, topShift) {
     var that = this,
       container = $container[0],
-      rowHeight = this.config.svgLayout.rowHeight,
+      rowHeight = this.config.svgLayout.rowHeight + this.config.svgLayout.rowPadding,
       prevScrollTop = container.scrollTop,
       jbody = $(this.$table.node()),
       backupRows = this.config.svgLayout.backupScrollRows,
@@ -843,7 +843,7 @@ var LineUp;
 
 
     function draggedWeight() {
-      var newValue = Math.max(d3.mouse(this.parentNode)[0], 2);
+      var newValue = Math.max(d3.mouse(this.parentNode)[0], that.config.htmlLayout.handleWidth / 2);
       that.reweightHeader({column: d3.select(this).data()[0], value: newValue});
       that.updateBody(that.storage.getColumnLayout(), that.storage.getData(), false);
     }

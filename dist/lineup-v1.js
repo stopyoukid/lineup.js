@@ -131,6 +131,7 @@ var LineUp;
     columnColors: d3.scale.category20(),
     grayColor: '#999999',
     numberformat: d3.format('.3n'),
+    cellFormatter: undefined,
     htmlLayout: {
       headerHeight: 50,
       headerOffset: 0,
@@ -1268,7 +1269,7 @@ var LineUp;
     var popupBG = container.append('div')
         // var popupBG = d3.select("body").append("div")
       .attr("class", "lu-popupBG");
-      
+
     var popup = container.append('div')
       .attr({
         "class": "lu-popup"
@@ -1358,7 +1359,7 @@ var LineUp;
     }
 
     redraw();
-    
+
     function getElementById(id) {
       return $(that.$container.node()).find("#" + id)[0];
     }
@@ -1445,7 +1446,7 @@ var LineUp;
       });
 
       popup.remove();
-      
+
       if (allChecked.length) {
         that.listeners['columns-changed'](that);
       }
@@ -1612,17 +1613,17 @@ var LineUp;
         if (a && b) {
           var firstEqual = a[0] === b[0];
           var secondEqual = a[1] === b[1];
-          
+
           // If they are both NaN, then they are equal
           if (!firstEqual && isNaN(a[0]) && isNaN(b[0])) {
             firstEqual = true;
           }
-          
+
           // If they are both NaN, then they are equal
           if (!secondEqual && isNaN(a[1]) && isNaN(b[1])) {
             secondEqual = true;
           }
-          return firstEqual && secondEqual;     
+          return firstEqual && secondEqual;
         }
         return a === b;
     }
@@ -1668,9 +1669,9 @@ var LineUp;
 
     function removeStackedColumn(col) {
       that.storage.removeColumn(col);
-      
+
       that.listeners['columns-changed'](that);
-      
+
       that.headerUpdateRequired = true;
       that.updateAll();
     }
@@ -1683,7 +1684,7 @@ var LineUp;
       var popupBG = this.$container.append('div')
         // var popupBG = d3.select("body").append("div")
         .attr("class", "lu-popupBG");
-        
+
         // ATS: Was d3.select('body').appe...
       var popup = this.$container.append('div')
         .attr({
@@ -1701,7 +1702,7 @@ var LineUp;
           '<button class="cancel"><i class="fa fa-times"></i> cancel</button>' +
           '<button class="ok"><i class="fa fa-check"></i> ok</button>'
       );
-      
+
       function getElementById(id) {
         return $(that.$container.node()).find("#" + id)[0];
       }
@@ -1940,7 +1941,7 @@ var LineUp;
         that.updateBody();
       }
     }
-    
+
     function getElementById(id) {
       return $(that.$container.node()).find("#" + id)[0];
     }
@@ -2015,7 +2016,7 @@ var LineUp;
   LineUp.prototype.initScrolling = function ($container, topShift) {
     var that = this,
       container = $container[0],
-      rowHeight = this.config.svgLayout.rowHeight,
+      rowHeight = this.config.svgLayout.rowHeight + this.config.svgLayout.rowPadding,
       prevScrollTop = container.scrollTop,
       jbody = $(this.$table.node()),
       backupRows = this.config.svgLayout.backupScrollRows,
@@ -2087,7 +2088,7 @@ var LineUp;
 
 
     function draggedWeight() {
-      var newValue = Math.max(d3.mouse(this.parentNode)[0], 2);
+      var newValue = Math.max(d3.mouse(this.parentNode)[0], that.config.htmlLayout.handleWidth / 2);
       that.reweightHeader({column: d3.select(this).data()[0], value: newValue});
       that.updateBody(that.storage.getColumnLayout(), that.storage.getData(), false);
     }
@@ -2882,7 +2883,9 @@ var LineUp;
             label: column.getValue(d, 'raw'),
             offsetX: column.offsetX + (colPadding / 2),
             width: Math.max(column.getColumnWidth() - colPadding, 0),
-            isRank: (column instanceof LineUp.LayoutRankColumn)
+            isRank: (column instanceof LineUp.LayoutRankColumn),
+            column: column,
+            row: d
           };
         }).filter(function(d) {
           return !!d.label;
@@ -2898,7 +2901,7 @@ var LineUp;
       ].join(";");
     }
 
-    textRows.enter()
+    var tre = textRows.enter()
       .append('div')
       .attr({
         'class': function (d) {
@@ -2913,6 +2916,11 @@ var LineUp;
       .text(function (d) {
         return d.label;
       });
+
+    if (config.cellFormatter) {
+        tre.call(config.cellFormatter);
+        textRows.call(config.cellFormatter);
+    }
 
     allRows.selectAll('.tableData.text.rank').text(function (d) {
       return d.label;
@@ -3079,12 +3087,13 @@ var LineUp;
       }
     );
 
+    var colPadding = config.svgLayout.columnPadding;
     var height = config.svgLayout.rowHeight - config.svgLayout.rowBarPadding*2 ;
     var barStyle = {
         "position": "absolute",
         "height": height + "px",
-        "left": function(d) { return d.offsetX + "px"; },
-        "width": function(d) { return ((d.width > 2) ? d.width - 2 : d.width) + "px"; },
+        "left": function(d) { return d.offsetX + (colPadding / 2) + "px"; },
+        "width": function(d) { return Math.max(((d.width > colPadding) ? d.width - colPadding : d.width), 0) + "px"; },
         "background-color":  function (d) {
             return d3.rgb(config.colorMapping.get(d.child.getDataID()));
         }
