@@ -1,4 +1,4 @@
-/*! lineup-v1 - v0.1.5 - 2016-11-04
+/*! lineup-v1 - v0.1.5 - 2016-11-07
 * https://github.com/stopyoukid/lineup.js
 * Copyright (c) 2016 ; Licensed BSD */
 (function() {
@@ -2888,7 +2888,7 @@ var LineUp;
             row: d
           };
         }).filter(function(d) {
-          return !!d.label;
+          return !!config.cellFormatter || !!d.label;
         });
         return dd;
       });
@@ -3299,7 +3299,7 @@ var LineUp;
 
       headers.forEach(function (col) {
           if (col.column instanceof LineUp.LineUpNumberColumn) {
-            textOverlays.push({id: col.id, value: col.getValue(row), label: that.config.numberformat(+col.getValue(row,'raw')),
+            textOverlays.push({id: col.id, value: col.getValue(row), label: that.config.numberformat(+col.getValue(row,'raw'), row, col),
               x: col.offsetX + 5,
               w: col.getColumnWidth()});
           } else if (col instanceof  LineUp.LayoutStackedColumn) {
