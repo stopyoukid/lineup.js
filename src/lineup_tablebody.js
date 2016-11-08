@@ -211,10 +211,10 @@ var LineUp;
         allStackOffset = 0;
         allStackW = 0;
 
-        return d.childs.map(function (child) {
+        return d.childs.map(function (child, i) {
           allStackW = child.getWidth(d.row);
 
-          allStackRes = {child: child, width: allStackW, offsetX: allStackOffset};
+          allStackRes = {child: child, width: allStackW, offsetX: allStackOffset, last: i === d.childs.length - 1 };
           if (asStacked) {
             allStackOffset += allStackW;
           } else {
@@ -230,8 +230,18 @@ var LineUp;
     var barStyle = {
         "position": "absolute",
         "height": height + "px",
-        "left": function(d) { return d.offsetX + (colPadding / 2) + "px"; },
-        "width": function(d) { return Math.max(((d.width > colPadding) ? d.width - colPadding : d.width), 0) + "px"; },
+        "left": function(d) {
+          var padding = 0;
+          if (!asStacked) {
+            padding += (colPadding / 2);
+          }
+          return (d.offsetX + padding) + "px";
+        },
+        "width": function(d) {
+            var widthAdjustment =
+              !asStacked || d.last ? -colPadding : 1;
+            return Math.max(((d.width > 0) ? d.width + widthAdjustment : d.width), 0) + "px";
+        },
         "background-color":  function (d) {
             return d3.rgb(config.colorMapping.get(d.child.getDataID()));
         }
