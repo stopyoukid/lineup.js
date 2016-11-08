@@ -1,4 +1,4 @@
-/*! lineup-v1 - v0.1.5 - 2016-11-07
+/*! lineup-v1 - v0.1.5 - 2016-11-08
 * https://github.com/stopyoukid/lineup.js
 * Copyright (c) 2016 ; Licensed BSD */
 (function() {
@@ -3290,11 +3290,11 @@ var LineUp;
     function createOverlays(row) {
       var textOverlays = [];
 
-      function toValue(v) {
+      function toValue(v, col) {
         if (isNaN(v) || v === '' || typeof v === 'undefined') {
           return '';
         }
-        return that.config.numberformat(+v);
+        return that.config.numberformat(+v, row, col);
       }
 
       headers.forEach(function (col) {
@@ -3310,7 +3310,7 @@ var LineUp;
 
               textOverlays.push({
                   id: child.id,
-                  label: toValue(child.getValue(row,'raw')) + ' -> (' + zeroFormat(child.getWidth(row)) + ')',
+                  label: toValue(child.getValue(row,'raw'), row, col) + ' -> (' + zeroFormat(child.getWidth(row)) + ')',
                   w: asStacked ? allStackW : child.getColumnWidth(),
                   x: (allStackOffset + col.offsetX)}
               );

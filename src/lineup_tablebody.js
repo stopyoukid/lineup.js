@@ -428,11 +428,11 @@ var LineUp;
     function createOverlays(row) {
       var textOverlays = [];
 
-      function toValue(v) {
+      function toValue(v, col) {
         if (isNaN(v) || v === '' || typeof v === 'undefined') {
           return '';
         }
-        return that.config.numberformat(+v);
+        return that.config.numberformat(+v, row, col);
       }
 
       headers.forEach(function (col) {
@@ -448,7 +448,7 @@ var LineUp;
 
               textOverlays.push({
                   id: child.id,
-                  label: toValue(child.getValue(row,'raw')) + ' -> (' + zeroFormat(child.getWidth(row)) + ')',
+                  label: toValue(child.getValue(row,'raw'), row, col) + ' -> (' + zeroFormat(child.getWidth(row)) + ')',
                   w: asStacked ? allStackW : child.getColumnWidth(),
                   x: (allStackOffset + col.offsetX)}
               );
