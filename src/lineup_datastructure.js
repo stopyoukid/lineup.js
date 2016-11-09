@@ -425,9 +425,9 @@ var LineUp;
       if (typeof r === 'boolean') {
         return r && r.trim().length > 0;
       } else if (typeof filter === 'string' && filter.length > 0) {
-        return r && r.toLowerCase().indexOf(filter.toLowerCase()) >= 0;
+        return (r && r + "").toLowerCase().indexOf(filter.toLowerCase()) >= 0;
       } else if (filter instanceof RegExp) {
-        return r && r.match(filter);
+        return (r && r + "").match(filter);
       }
       return true;
     },

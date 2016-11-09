@@ -1,4 +1,4 @@
-/*! lineup-v1 - v0.1.5 - 2016-11-08
+/*! lineup-v1 - v0.1.5 - 2016-11-09
 * https://github.com/stopyoukid/lineup.js
 * Copyright (c) 2016 ; Licensed BSD */
 (function() {
@@ -826,9 +826,9 @@ var LineUp;
       if (typeof r === 'boolean') {
         return r && r.trim().length > 0;
       } else if (typeof filter === 'string' && filter.length > 0) {
-        return r && r.toLowerCase().indexOf(filter.toLowerCase()) >= 0;
+        return (r && r + "").toLowerCase().indexOf(filter.toLowerCase()) >= 0;
       } else if (filter instanceof RegExp) {
-        return r && r.match(filter);
+        return (r && r + "").match(filter);
       }
       return true;
     },
