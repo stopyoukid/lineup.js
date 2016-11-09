@@ -137,7 +137,11 @@ var LineUp;
     })
       .on('click', function (d) {
         // Uncharted (Dario): Removed click functionality from LayoutRankColumn instances
-        if (d3.event.defaultPrevented || d instanceof LineUp.LayoutEmptyColumn || d instanceof LineUp.LayoutActionColumn || d instanceof LineUp.LayoutRankColumn) {
+        if (d3.event.defaultPrevented ||
+            d instanceof LineUp.LayoutEmptyColumn ||
+            d instanceof LineUp.LayoutActionColumn ||
+            d instanceof LineUp.LayoutRankColumn ||
+            (d.column && d.column.config && d.column.config.sortable === false)) {
           return;
         }
         // no sorting for empty stacked columns !!!
@@ -300,7 +304,13 @@ var LineUp;
           'class': 'singleColumnDelete',
           text: '\uf014',
           filter: function (d) {
-            return (/* ATS: Added this one */d instanceof LineUp.LayoutRankColumn || d instanceof LineUp.LayoutStackedColumn || d instanceof LineUp.LayoutEmptyColumn || d instanceof LineUp.LayoutActionColumn) ? [] : [d];
+            var isInvalidColumn =
+              d instanceof LineUp.LayoutRankColumn ||
+              d instanceof LineUp.LayoutStackedColumn ||
+              d instanceof LineUp.LayoutEmptyColumn ||
+              d instanceof LineUp.LayoutActionColumn ||
+              (d.column && d.column.config && d.column.config.removable === false);
+            return /* ATS: Added this one */ isInvalidColumn ? [] : [d];
           },
           action: function (d) {
             that.storage.removeColumn(d);
@@ -313,7 +323,8 @@ var LineUp;
           'class': 'singleColumnFilter',
           text: '\uf0b0',
           filter: function (d) {
-            return (d.column) ? [d] : [];
+
+            return (d.column && d.column.config && d.column.config.filterable !== false) ? [d] : [];
           },
           offset: config.htmlLayout.buttonWidth,
           action: function (d) {

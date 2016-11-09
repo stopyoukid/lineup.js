@@ -424,6 +424,7 @@ var LineUp;
     this.id = fixCSS(desc.id || this.column);
     this.missingValue = desc.missingValue;
     this.layout = {};
+    this.config = desc || {};
   }
 
   LineUp.LineUpColumn = LineUpColumn;
@@ -615,7 +616,7 @@ var LineUp;
         if (oMapping && oScale) {
           var oldDomain = oMapping.domain();
           var domain = oScale.domain();
-          return !isNaN(domain[0]) && !isNaN(domain[1]) && (domain[0] !== oldDomain[0] || domain[1] !== oldDomain[1]);      
+          return !isNaN(domain[0]) && !isNaN(domain[1]) && (domain[0] !== oldDomain[0] || domain[1] !== oldDomain[1]);
         }
         return false;
       }
@@ -763,7 +764,7 @@ var LineUp;
       if (isNaN(r) || typeof r === 'undefined') {
         return 0;
       }
-      
+
       // If there is no domain on the data, then just return a "full" bar, so it looks like there is some data
       var d = this.scale.domain();
       if (d[0] === d[1]) {
@@ -3619,7 +3620,11 @@ var LineUp;
     })
       .on('click', function (d) {
         // Uncharted (Dario): Removed click functionality from LayoutRankColumn instances
-        if (d3.event.defaultPrevented || d instanceof LineUp.LayoutEmptyColumn || d instanceof LineUp.LayoutActionColumn || d instanceof LineUp.LayoutRankColumn) {
+        if (d3.event.defaultPrevented ||
+            d instanceof LineUp.LayoutEmptyColumn ||
+            d instanceof LineUp.LayoutActionColumn ||
+            d instanceof LineUp.LayoutRankColumn ||
+            (d.column && d.column.config && d.column.config.sortable === false)) {
           return;
         }
         // no sorting for empty stacked columns !!!
@@ -3782,7 +3787,13 @@ var LineUp;
           'class': 'singleColumnDelete',
           text: '\uf014',
           filter: function (d) {
-            return (/* ATS: Added this one */d instanceof LineUp.LayoutRankColumn || d instanceof LineUp.LayoutStackedColumn || d instanceof LineUp.LayoutEmptyColumn || d instanceof LineUp.LayoutActionColumn) ? [] : [d];
+            var isInvalidColumn =
+              d instanceof LineUp.LayoutRankColumn ||
+              d instanceof LineUp.LayoutStackedColumn ||
+              d instanceof LineUp.LayoutEmptyColumn ||
+              d instanceof LineUp.LayoutActionColumn ||
+              (d.column && d.column.config && d.column.config.removable === false);
+            return /* ATS: Added this one */ isInvalidColumn ? [] : [d];
           },
           action: function (d) {
             that.storage.removeColumn(d);
@@ -3795,7 +3806,8 @@ var LineUp;
           'class': 'singleColumnFilter',
           text: '\uf0b0',
           filter: function (d) {
-            return (d.column) ? [d] : [];
+
+            return (d.column && d.column.config && d.column.config.filterable !== false) ? [d] : [];
           },
           offset: config.htmlLayout.buttonWidth,
           action: function (d) {
