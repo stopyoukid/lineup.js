@@ -226,7 +226,7 @@ var LineUp;
         var firstNE;
         var lastNE;
         mapped.forEach(function(m, i) {
-          if (m.width >= .5) {
+          if (m.width >= 0.5) {
             lastNE = i;
             if (firstNE === undefined) {
               m.firstNonEmpty = true;
