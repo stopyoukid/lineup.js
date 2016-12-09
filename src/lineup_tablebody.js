@@ -211,7 +211,7 @@ var LineUp;
         allStackOffset = 0;
         allStackW = 0;
 
-        return d.childs.map(function (child, i) {
+        var mapped = d.childs.map(function (child, i) {
           allStackW = child.getWidth(d.row);
 
           allStackRes = {child: child, width: allStackW, offsetX: allStackOffset, last: i === d.childs.length - 1 };
@@ -222,6 +222,22 @@ var LineUp;
           }
           return allStackRes;
         });
+
+        var firstNE;
+        var lastNE;
+        mapped.forEach(function(m, i) {
+          if (m.width >= .5) {
+            lastNE = i;
+            if (firstNE === undefined) {
+              m.firstNonEmpty = true;
+            }
+          }
+        });
+        if (lastNE !== undefined) {
+          mapped[lastNE].lastNonEmpty = true;
+        }
+
+        return mapped;
       }
     );
 
@@ -232,15 +248,16 @@ var LineUp;
         "height": height + "px",
         "left": function(d) {
           var padding = 0;
-          if (!asStacked) {
+          if (!asStacked || d.firstNonEmpty) {
             padding += (colPadding / 2);
           }
           return (d.offsetX + padding) + "px";
+          // return d.offsetX + "px";
         },
         "width": function(d) {
-            var widthAdjustment =
-              !asStacked || d.last ? -colPadding : 1;
+            var widthAdjustment = (!asStacked || d.lastNonEmpty) ? -colPadding : 0;
             return Math.max(((d.width > 0) ? d.width + widthAdjustment : d.width), 0) + "px";
+            // return Math.max(d.width, 0) + "px";
         },
         "background-color":  function (d) {
             return d3.rgb(config.colorMapping.get(d.child.getDataID()));
