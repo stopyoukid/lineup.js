@@ -1,4 +1,4 @@
-/*! lineup-v1 - v0.1.5 - 2016-12-09
+/*! lineup-v1 - v0.2.0 - 2016-12-20
 * https://github.com/stopyoukid/lineup.js
 * Copyright (c) 2016 ; Licensed BSD */
 (function() {
